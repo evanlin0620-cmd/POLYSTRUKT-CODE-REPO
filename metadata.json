@@ -1,0 +1,8 @@
+{
+  "name": "Polystrukt GenCAD",
+  "description": "AI-powered engineering platform converting natural language into rigid CAD models and technical design.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}

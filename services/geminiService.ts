@@ -1,4 +1,4 @@
-import { GoogleGenAI, Type } from "@google/genai";
+
 import { Attachment, ChatMessage } from '../types';
 
 export interface TechnicalAIResponse {
@@ -13,7 +13,7 @@ export interface TechnicalAIResponse {
   isolatedComponent?: string; 
   sources?: { uri: string; title: string }[];
   error?: string;
-  statusCode: number; // Guaranteed status code
+  statusCode: number; 
 }
 
 const KHRONOS_ASSET_BASE = "https://cdn.jsdelivr.net/gh/KhronosGroup/glTF-Sample-Models@master/2.0";
@@ -26,10 +26,6 @@ const MODEL_LIBRARY = {
   PRESSURE_VESSEL: `${KHRONOS_ASSET_BASE}/WaterBottle/glTF-Binary/WaterBottle.glb`,
 };
 
-/**
- * Validates inputs to prevent malformed requests.
- * Returns a specific error string if validation fails.
- */
 const validateInput = (query: string, attachment?: Attachment): string | null => {
   const trimmed = query?.trim();
   if (!trimmed && !attachment) {
@@ -41,9 +37,6 @@ const validateInput = (query: string, attachment?: Attachment): string | null =>
   return null;
 };
 
-/**
- * Standardized error generator to ensure a valid JSON response structure is always returned.
- */
 const createJsonErrorResponse = (message: string, code: string, status: number): TechnicalAIResponse => ({
   analysis: `KERNEL_SIGNAL_INTERRUPTED: ${message}`,
   specs: `SYSTEM_CODE: ${code}`,
@@ -57,18 +50,45 @@ const createJsonErrorResponse = (message: string, code: string, status: number):
   statusCode: status
 });
 
+const pollForJobCompletion = async (jobId: string, onStatusUpdate: (status: string) => void): Promise<any> => {
+  let attempts = 0;
+  const maxAttempts = 120; // 2 minutes
+  while (attempts < maxAttempts) {
+    try {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      const res = await fetch(`/api/generate/status/${jobId}`);
+      if (!res.ok) {
+        onStatusUpdate(`HTTP error! status: ${res.status}`);
+        continue;
+      }
+      const data = await res.json();
+      if (data.status === 'completed') {
+        return data.result;
+      } else if (data.status === 'failed') {
+        throw new Error(data.reason);
+      } else {
+        onStatusUpdate(data.status);
+      }
+    } catch (error) {
+      console.error("Polling error:", error);
+      onStatusUpdate("Polling failed");
+    }
+    attempts++;
+  }
+  throw new Error("Job timed out");
+};
+
 export const getTechnicalResponse = async (
   query: string, 
   history: ChatMessage[] = [],
-  attachment?: Attachment
+  attachment?: Attachment,
+  onStatusUpdate: (status: string) => void = () => {}
 ): Promise<TechnicalAIResponse> => {
-  // 1. Initial Validation
   const validationError = validateInput(query, attachment);
   if (validationError) {
     return createJsonErrorResponse(validationError, "VAL_ERROR_400", 400);
   }
 
-  // 2. Diagnostic Testing Hook
   if (query === "DIAGNOSTIC_RUN") {
     return {
       analysis: "Diagnostic synthesis successful. Kernel connectivity verified.",
@@ -83,127 +103,46 @@ export const getTechnicalResponse = async (
     };
   }
 
-  // 3. API Key Check
-  if (!process.env.API_KEY) {
-    return createJsonErrorResponse("Synthesis core credentials missing from environment.", "AUTH_ERROR_500", 500);
-  }
-
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    
-    // Strict system instruction to force JSON output
-    const systemInstruction = `
-      You are the Polystrukt Technical Synthesis Core.
-      Requirement: Output valid JSON matching the provided schema. 
-      Do not include any text, markdown code blocks, or explanations outside of the JSON object.
-      
-      Geometry Mapping (modelUrl field): 
-      - Use 'ENGINE_V2' for reciprocating engines/pistons.
-      - Use 'GEARBOX' for transmissions/gears.
-      - Use 'HYDRAULIC_UNIT' for saws/actuators.
-      - Use 'HELMET_SF' for shells/structural cases.
-      - Use 'PRESSURE_VESSEL' for tanks/vessels.
+    const prompt = `
+      Based on the following history and query, generate a technical response in JSON format.
+      History: ${JSON.stringify(history)}
+      Query: ${query}
+      Attachment: ${attachment ? attachment.name : 'None'}
     `;
 
-    const contents = history.map(msg => ({
-      role: msg.role,
-      parts: [
-        ...(msg.attachment ? [{
-          inlineData: {
-            mimeType: msg.attachment.mimeType,
-            data: msg.attachment.data.split(',')[1] || msg.attachment.data
-          }
-        }] : []),
-        { text: msg.text }
-      ]
-    }));
-
-    contents.push({
-      role: 'user',
-      parts: [
-        ...(attachment ? [{
-          inlineData: {
-            mimeType: attachment.mimeType,
-            data: attachment.data.split(',')[1] || attachment.data
-          }
-        }] : []),
-        { text: query }
-      ]
+    onStatusUpdate("queueing");
+    const initialResponse = await fetch('/api/generate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ prompt }),
     });
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
-      contents: contents,
-      config: {
-        systemInstruction: systemInstruction,
-        tools: [{ googleSearch: {} }],
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            researchSummary: { type: Type.STRING },
-            optimizationLogic: { type: Type.STRING },
-            analysis: { type: Type.STRING },
-            specs: { type: Type.STRING },
-            action: { type: Type.STRING },
-            modelUrl: { type: Type.STRING },
-            isolatedComponent: { type: Type.STRING },
-            simulationType: { type: Type.STRING, enum: ["stress", "thermal", "flow", "none"] },
-            suggestedMaterials: { type: Type.ARRAY, items: { type: Type.STRING } }
-          },
-          required: ["researchSummary", "optimizationLogic", "analysis", "specs", "action", "modelUrl", "simulationType", "suggestedMaterials"]
-        },
-        temperature: 0.25,
-        thinkingConfig: { thinkingBudget: 4000 }
-      }
-    });
-
-    const rawText = response.text;
-    if (!rawText) {
-      return createJsonErrorResponse("Empty signal received from the design core.", "EMPTY_RES_500", 500);
+    if (!initialResponse.ok) {
+      const errorText = await initialResponse.text();
+      return createJsonErrorResponse(`Failed to queue job: ${errorText}`, `QUEUE_ERROR_${initialResponse.status}`, initialResponse.status);
     }
 
-    // Extraction & Sanitization
-    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-    const sanitizedText = jsonMatch ? jsonMatch[0] : rawText;
+    const { jobId } = await initialResponse.json();
+    onStatusUpdate("queued");
+
+    const result = await pollForJobCompletion(jobId, onStatusUpdate);
     
-    let parsed: any;
-    try {
-      parsed = JSON.parse(sanitizedText);
-    } catch (e) {
-      console.error("Critical: Failed to parse engine JSON stream", e, rawText);
-      return createJsonErrorResponse("Malformed technical data stream. Parsing failed.", "PARSE_ERROR_500", 500);
-    }
-
-    // Asset Resolution logic
-    const modelKey = (parsed.modelUrl as string || "GEARBOX").toUpperCase().replace(/\s/g, '_') as keyof typeof MODEL_LIBRARY;
+    // The result from the worker should already be in the correct format.
+    // We just need to resolve the model URL and add the status code.
+    const modelKey = (result.modelUrl as string || "GEARBOX").toUpperCase().replace(/\s/g, '_') as keyof typeof MODEL_LIBRARY;
     const resolvedUrl = MODEL_LIBRARY[modelKey] || MODEL_LIBRARY.GEARBOX;
 
-    // Grounding Metadata handling
-    const sources = response.candidates?.[0]?.groundingMetadata?.groundingChunks?.map((chunk: any) => ({
-      uri: chunk.web?.uri,
-      title: chunk.web?.title
-    })).filter((s: any) => s.uri) || [];
-
     return {
-      ...parsed,
+      ...result,
       modelUrl: resolvedUrl,
-      simulationType: parsed.simulationType || 'none',
-      sources,
       statusCode: 200
     };
 
   } catch (error: any) {
-    console.error("Gemini Service Fault:", error);
-    
-    if (error.message?.includes("429") || error.message?.toLowerCase().includes("quota")) {
-      return createJsonErrorResponse("Technical quota exceeded. Synthesis kernel cooling down.", "RATE_LIMIT_429", 429);
-    }
-    
-    if (error.message?.toLowerCase().includes("safety") || error.message?.toLowerCase().includes("block")) {
-      return createJsonErrorResponse("Safety protocol breach: Structural risks or prohibited parameters detected.", "SAFETY_BLOCK_400", 400);
-    }
-    
-    return createJsonErrorResponse(error.message || "An unexpected overflow occurred in the engineering synthesis core.", "CORE_FAULT_500", 500);
+    console.error("Service Fault:", error);
+    return createJsonErrorResponse(error.message || "An unexpected error occurred.", "FAULT_500", 500);
   }
 };

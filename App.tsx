@@ -34,6 +34,7 @@ export default function App() {
   return (
     <ReactLenis root>
       <div className="relative bg-zinc-50 min-h-screen text-zinc-900 font-sans selection:bg-zinc-900 selection:text-white">
+        <h1>Hello, World!</h1>
         <CustomCursor />
         
         <div 

@@ -2,6 +2,7 @@
 import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
 import { configDefaults } from 'vitest/config';
 
 export default defineConfig(({ mode }) => {
@@ -18,7 +19,7 @@ export default defineConfig(({ mode }) => {
           },
         },
       },
-      plugins: [react()],
+      plugins: [react(), tailwindcss()],
       define: {
         'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
         'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
@@ -34,7 +35,7 @@ export default defineConfig(({ mode }) => {
         setupFiles: './src/tests/setup.ts',
         // you might want to disable it, if you don't have tests that rely on CSS
         // since parsing CSS is slow
-        css: true,
+        css: false,
       },
     };
 });

@@ -27,9 +27,9 @@ vi.mock('framer-motion', async () => {
 });
 
 describe('App', () => {
-  it('renders headline', () => {
+  it('renders the main components', () => {
     render(<App />);
-    const headline = screen.getByText(/Hello, World!/i);
-    expect(headline).toBeInTheDocument();
+    const navbar = screen.getByText(/Navbar Mock/i);
+    expect(navbar).toBeInTheDocument();
   });
 });

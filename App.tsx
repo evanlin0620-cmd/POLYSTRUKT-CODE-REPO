@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ReactLenis } from '@studio-freight/react-lenis';
+import { ReactLenis } from 'lenis/react';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { Stats } from './components/Stats';
@@ -8,7 +8,7 @@ import { CustomCursor } from './components/CustomCursor';
 import { ChatWidget } from './components/ChatWidget';
 import { Workspace } from './components/Workspace';
 import { AnimatePresence, motion } from 'framer-motion';
-import './index.css';
+import './src/index.css';
 
 const NOISE_SVG = `data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='1'/%3E%3C/svg%3E`;
 
@@ -34,7 +34,6 @@ export default function App() {
   return (
     <ReactLenis root>
       <div className="relative bg-zinc-50 min-h-screen text-zinc-900 font-sans selection:bg-zinc-900 selection:text-white">
-        <h1>Hello, World!</h1>
         <CustomCursor />
         
         <div 

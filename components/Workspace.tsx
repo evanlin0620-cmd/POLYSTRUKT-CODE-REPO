@@ -193,6 +193,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ onBack, initialPrompt }) =
                initial={{ opacity: 0, x: 50, scale: 0.95 }} 
                animate={{ opacity: 1, x: 0, scale: 1 }} 
                exit={{ opacity: 0, x: 50, scale: 0.95 }}
+               transition={{ type: "spring", stiffness: 400, damping: 40 }}
                className="absolute top-[200px] right-6 w-80 z-30 pointer-events-auto cursor-grab active:cursor-grabbing"
              >
                 <div className={`bg-white/95 backdrop-blur-xl border ${currentDesign.statusCode && currentDesign.statusCode >= 400 ? 'border-red-200 shadow-red-500/10' : 'border-zinc-200'} rounded-2xl p-5 shadow-2xl space-y-4`}>
@@ -293,8 +294,8 @@ export const Workspace: React.FC<WorkspaceProps> = ({ onBack, initialPrompt }) =
         <motion.div 
           layout 
           className="bg-white/95 backdrop-blur-2xl border border-zinc-200 rounded-3xl p-4 shadow-2xl flex flex-col gap-3"
-          animate={isShaking ? { x: [-10, 10, -8, 8, -5, 5, 0] } : {}}
-          transition={{ duration: 0.4 }}
+          animate={isShaking ? { x: [-8, 8, -6, 6, -4, 4, 0] } : {}}
+          transition={{ type: 'spring', stiffness: 500, damping: 20, mass: 0.5 }}
         >
           <div className="flex items-end gap-4 px-2">
             <div className="p-2.5 bg-zinc-900 rounded-2xl text-white shadow-lg mb-1">

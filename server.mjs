@@ -2,7 +2,7 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
-import RedisStore from 'rate-limit-redis';
+// import RedisStore from 'rate-limit-redis';
 import { auth } from 'express-oauth2-jwt-bearer';
 import { generationQueue } from './queue.mjs';
 import { Job } from 'bullmq';
@@ -10,7 +10,7 @@ import { Low } from 'lowdb';
 import { JSONFile } from 'lowdb/node';
 import { WebSocketServer } from 'ws';
 import http from 'http';
-import IORedis from 'ioredis';
+// import IORedis from 'ioredis';
 
 dotenv.config();
 
@@ -53,19 +53,15 @@ const checkJwt = auth({
   issuerBaseURL: `https://dev-i3a1b0p3.us.auth0.com/`,
 });
 
-// Configure rate limiting with Redis
-const redisClient = new IORedis({ maxRetriesPerRequest: null });
-
+// Configure rate limiting without Redis for local development
 const limiter = rateLimit({
-  store: new RedisStore({
-    sendCommand: (...args) => redisClient.call(...args),
-  }),
   windowMs: 60 * 1000, // 1 minute
-  max: 10, // Limit each IP to 10 requests per minute
+  max: 100, // Allow more requests for local development
   standardHeaders: true,
   legacyHeaders: false,
   message: 'Too many requests from this IP, please try again after a minute',
 });
+
 
 app.use('/api', limiter);
 app.use(express.json());

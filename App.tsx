@@ -16,17 +16,23 @@ export default function App() {
   const [view, setView] = useState<'landing' | 'workspace'>('landing');
   const [initialPrompt, setInitialPrompt] = useState('');
 
-  useEffect(() => {
-    const handleNavigation = (e: CustomEvent<{ view: 'landing' | 'workspace'; prompt?: string }>) => {
-      if (e.detail?.view) {
-        setView(e.detail.view);
-        if (e.detail.prompt) {
-          setInitialPrompt(e.detail.prompt);
-        } else {
-          setInitialPrompt('');
-        }
+  const handleNavigation = (e: CustomEvent<{ view: 'landing' | 'workspace'; prompt?: string }>) => {
+    if (e.detail?.view) {
+      setView(e.detail.view);
+      if (e.detail.prompt) {
+        setInitialPrompt(e.detail.prompt);
+      } else {
+        setInitialPrompt('');
       }
-    };
+    }
+  };
+
+  const handleSelectPrompt = (prompt: string) => {
+    setView('workspace');
+    setInitialPrompt(prompt);
+  };
+
+  useEffect(() => {
     window.addEventListener('navigate', handleNavigation as EventListener);
     return () => window.removeEventListener('navigate', handleNavigation as EventListener);
   }, []);
@@ -52,7 +58,7 @@ export default function App() {
             >
               <Navbar />
               <main>
-                <Hero />
+                <Hero onSelectPrompt={handleSelectPrompt} />
                 <Stats />
                 <Gallery />
               </main>

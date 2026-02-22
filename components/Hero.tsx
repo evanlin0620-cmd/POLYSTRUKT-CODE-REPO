@@ -1,8 +1,17 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ThreeScene } from './ThreeScene';
+import { SavedPrompts } from './SavedPrompts';
+import { RecentPrompts } from './RecentPrompts';
+import { useRecentPrompts } from '../hooks/useRecentPrompts';
 
-export const Hero: React.FC = () => {
+interface HeroProps {
+  onSelectPrompt: (prompt: string) => void;
+}
+
+export const Hero: React.FC<HeroProps> = ({ onSelectPrompt }) => {
+  const { recentPrompts } = useRecentPrompts();
+
   const handleOpenWorkspace = () => {
     window.dispatchEvent(new CustomEvent('navigate', { detail: { view: 'workspace' } }));
   };
@@ -33,14 +42,14 @@ export const Hero: React.FC = () => {
           </p>
         </motion.div>
         
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.4 }}
           className="pointer-events-auto pt-6"
         >
           <div className="flex flex-col md:flex-row items-center justify-center gap-4">
-            <button 
+            <button
               onClick={handleOpenWorkspace}
               className="px-8 py-3.5 bg-zinc-900 text-white rounded-full font-medium transition-transform hover:scale-105 shadow-xl shadow-zinc-900/20 focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:ring-offset-2"
             >
@@ -51,10 +60,14 @@ export const Hero: React.FC = () => {
             </button>
           </div>
         </motion.div>
+
+        <RecentPrompts recentPrompts={recentPrompts} onSelectPrompt={onSelectPrompt} />
       </div>
+
+      <SavedPrompts onSelectPrompt={onSelectPrompt} />
       
       {/* Scroll indicator */}
-      <motion.div 
+      <motion.div
         className="absolute bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 opacity-60 mix-blend-darken"
         animate={{ y: [0, 10, 0] }}
         transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}

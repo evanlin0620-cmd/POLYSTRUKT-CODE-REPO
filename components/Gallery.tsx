@@ -37,6 +37,7 @@ const projects: Project[] = [
 
 export const Gallery: React.FC = () => {
   const [copiedId, setCopiedId] = useState<number | null>(null);
+  const [activeId, setActiveId] = useState<number | null>(null);
 
   const handleCopy = (e: React.MouseEvent, id: number, text: string) => {
     e.stopPropagation();
@@ -47,6 +48,10 @@ export const Gallery: React.FC = () => {
 
   const handlePromptAction = (prompt: string) => {
     window.dispatchEvent(new CustomEvent('navigate', { detail: { view: 'workspace', prompt } }));
+  };
+
+  const toggleActive = (id: number) => {
+    setActiveId(activeId === id ? null : id);
   };
 
   return (
@@ -89,32 +94,33 @@ export const Gallery: React.FC = () => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-50px" }}
               transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-              className="group aspect-[16/10] bg-zinc-950 rounded-3xl overflow-hidden relative shadow-xl hover:shadow-[0_40px_80px_-20px_rgba(139,92,246,0.3)] transition-all duration-700 w-full"
+              className={`group aspect-[16/10] bg-zinc-950 rounded-3xl overflow-hidden relative shadow-xl hover:shadow-[0_40px_80px_-20px_rgba(139,92,246,0.3)] transition-all duration-700 w-full ${activeId === item.id ? 'is-active' : ''}`}
+              onClick={() => toggleActive(item.id)}
             >
                {/* Image Container */}
-               <div className="absolute inset-0 w-full h-full transform transition-transform duration-1000 group-hover:scale-110">
+               <div className="absolute inset-0 w-full h-full transform transition-transform duration-1000 group-hover:scale-110 group-[.is-active]:scale-110">
                   <img 
                     src={item.image} 
                     alt={`Render of ${item.title}`}
                     loading="lazy"
-                    className="absolute inset-0 w-full h-full object-cover opacity-60 grayscale group-hover:grayscale-0 group-hover:opacity-60 transition-all duration-700"
+                    className="absolute inset-0 w-full h-full object-cover opacity-60 grayscale group-hover:grayscale-0 group-[.is-active]:grayscale-0 group-hover:opacity-60 group-[.is-active]:opacity-60 transition-all duration-700"
                   />
                   {/* Digital Overlay */}
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.6)_100%)]" />
-                  <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:30px_30px] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
+                  <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:30px_30px] opacity-0 group-hover:opacity-100 group-[.is-active]:opacity-100 transition-opacity duration-700 pointer-events-none" />
                </div>
 
                {/* Hover Scan Line */}
                <motion.div 
-                  className="absolute inset-x-0 h-px bg-gradient-to-r from-transparent via-purple-400 to-transparent z-10 opacity-0 group-hover:opacity-100"
+                  className="absolute inset-x-0 h-px bg-gradient-to-r from-transparent via-purple-400 to-transparent z-10 opacity-0 group-hover:opacity-100 group-[.is-active]:opacity-100"
                   animate={{ top: ["0%", "100%", "0%"] }}
                   transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
                />
 
                {/* Prompt Reveal Overlay */}
-               <div className="absolute inset-0 flex items-center justify-center p-8 opacity-0 group-hover:opacity-100 transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] z-20 pointer-events-none group-hover:pointer-events-auto">
+               <div className="absolute inset-0 flex items-center justify-center p-8 opacity-0 group-hover:opacity-100 group-[.is-active]:opacity-100 transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] z-20 pointer-events-none group-hover:pointer-events-auto group-[.is-active]:pointer-events-auto">
                   <motion.div 
-                    className="bg-zinc-950/90 backdrop-blur-2xl border border-white/10 p-8 rounded-3xl w-full max-w-md transform translate-y-10 group-hover:translate-y-0 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.8)] relative overflow-hidden"
+                    className="bg-zinc-950/90 backdrop-blur-2xl border border-white/10 p-8 rounded-3xl w-full max-w-md transform translate-y-10 group-hover:translate-y-0 group-[.is-active]:translate-y-0 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.8)] relative overflow-hidden"
                   >
                       {/* Interaction Area */}
                       <div 
@@ -142,15 +148,15 @@ export const Gallery: React.FC = () => {
                           </button>
                         </div>
 
-                        <p className="font-technical text-sm md:text-base text-zinc-200 leading-relaxed tracking-tight group-hover/prompt:text-white transition-colors duration-300">
+                        <p className="font-technical text-sm md:text-base text-zinc-200 leading-relaxed tracking-tight group-hover/prompt:text-white group-[.is-active]/prompt:text-white transition-colors duration-300">
                           <span className="text-purple-500 font-bold mr-3 select-none text-lg">›</span>
                           {item.prompt}
                           <span className="inline-block w-2 h-4 bg-purple-500/60 ml-2 animate-pulse align-middle" />
                         </p>
 
-                        <div className="mt-8 flex items-center justify-center gap-2 py-3 bg-white/5 rounded-xl border border-white/5 group-hover/prompt:bg-white/10 group-hover/prompt:border-purple-500/30 transition-all">
+                        <div className="mt-8 flex items-center justify-center gap-2 py-3 bg-white/5 rounded-xl border border-white/5 group-hover/prompt:bg-white/10 group-[.is-active]/prompt:bg-white/10 group-hover/prompt:border-purple-500/30 group-[.is-active]/prompt:border-purple-500/30 transition-all">
                            <Sparkles size={14} className="text-purple-400" />
-                           <span className="text-[10px] font-unique font-black tracking-widest text-zinc-400 group-hover/prompt:text-white">CLICK TO LOAD INTO ENGINE</span>
+                           <span className="text-[10px] font-unique font-black tracking-widest text-zinc-400 group-hover/prompt:text-white group-[.is-active]/prompt:text-white">CLICK TO LOAD INTO ENGINE</span>
                         </div>
                       </div>
                   </motion.div>
@@ -159,7 +165,7 @@ export const Gallery: React.FC = () => {
                {/* Static Content Overlay */}
                <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-transparent to-transparent opacity-80 pointer-events-none" />
                
-               <div className="absolute bottom-8 left-8 right-8 text-white z-10 flex justify-between items-end group-hover:opacity-0 group-hover:translate-y-4 transition-all duration-500 ease-in-out">
+               <div className="absolute bottom-8 left-8 right-8 text-white z-10 flex justify-between items-end group-hover:opacity-0 group-[.is-active]:opacity-0 group-hover:translate-y-4 group-[.is-active]:translate-y-4 transition-all duration-500 ease-in-out">
                  <div>
                    <h3 className="text-3xl font-black mb-2 tracking-tighter font-unique">{item.title}</h3>
                    <div className="flex items-center gap-3">

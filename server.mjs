@@ -2,19 +2,16 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
-// import RedisStore from 'rate-limit-redis';
 import { auth } from 'express-oauth2-jwt-bearer';
 import { generationQueue } from './queue.mjs';
-import { Job } from 'bullmq';
 import { Low } from 'lowdb';
 import { JSONFile } from 'lowdb/node';
 import { WebSocketServer } from 'ws';
 import http from 'http';
-// import IORedis from 'ioredis';
+import { jobClients } from './shared.mjs';
 
 dotenv.config();
 
-// Database setup
 const adapter = new JSONFile('db.json');
 const defaultData = { sessions: {} };
 const db = new Low(adapter, defaultData);
@@ -25,9 +22,6 @@ const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
 const port = process.env.PORT || 3001;
-
-// WebSocket connections
-const jobClients = new Map();
 
 wss.on('connection', (ws) => {
   ws.on('message', (message) => {
@@ -47,29 +41,30 @@ wss.on('connection', (ws) => {
   });
 });
 
-// Authorization middleware
 const checkJwt = auth({
   audience: 'https://polystrukt-api',
   issuerBaseURL: `https://dev-i3a1b0p3.us.auth0.com/`,
 });
 
-// Configure rate limiting without Redis for local development
 const limiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  max: 100, // Allow more requests for local development
+  windowMs: 60 * 1000, 
+  max: 100, 
   standardHeaders: true,
   legacyHeaders: false,
   message: 'Too many requests from this IP, please try again after a minute',
 });
-
 
 app.use('/api', limiter);
 app.use(express.json());
 
 app.get('/health', async (req, res) => {
   try {
-    const queueStatus = await generationQueue.client.status;
-    res.status(queueStatus === 'ready' ? 200 : 503).send({ server: 'OK', queue: queueStatus });
+    if (generationQueue) {
+      const queueStatus = await generationQueue.client.status();
+      res.status(queueStatus === 'ready' ? 200 : 503).send({ server: 'OK', queue: queueStatus });
+    } else {
+      res.status(200).send({ server: 'OK', queue: 'mock' });
+    }
   } catch (error) {
     res.status(500).send({ server: 'OK', queue: 'Error' });
   }
@@ -85,7 +80,6 @@ app.post('/api/generate', async (req, res) => {
   res.send({ jobId: job.id });
 });
 
-// Protect the /api/save-session endpoint
 app.post('/api/save-session', checkJwt, async (req, res) => {
   const { prompt, design } = req.body;
   const userId = req.auth.payload.sub;
@@ -99,14 +93,12 @@ app.post('/api/save-session', checkJwt, async (req, res) => {
   res.status(200).send({ message: 'Session saved successfully' });
 });
 
-// Protect the /api/load-sessions endpoint
 app.get('api/load-sessions', checkJwt, async (req, res) => {
   const userId = req.auth.payload.sub;
   const userSessions = db.data.sessions[userId] || [];
   res.status(200).send(userSessions);
 });
 
-// Error handling middleware
 app.use((err, req, res, next) => {
     console.error(err.stack);
     res.status(500).send('Something broke!');
@@ -115,5 +107,3 @@ app.use((err, req, res, next) => {
 server.listen(port, () => {
   console.log(`Server listening on port ${port}`);
 });
-
-export { jobClients };

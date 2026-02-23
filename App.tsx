@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { ReactLenis } from 'lenis/react';
 import { Navbar } from './components/Navbar';
@@ -8,6 +9,8 @@ import { CustomCursor } from './components/CustomCursor';
 import { ChatWidget } from './components/ChatWidget';
 import { Workspace } from './components/Workspace';
 import { AnimatePresence, motion } from 'framer-motion';
+import { useAuth } from './hooks/useAuth';
+import Auth from './components/Auth';
 import './src/index.css';
 
 const NOISE_SVG = `data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='1'/%3E%3C/svg%3E`;
@@ -15,6 +18,7 @@ const NOISE_SVG = `data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http:/
 export default function App() {
   const [view, setView] = useState<'landing' | 'workspace'>('landing');
   const [initialPrompt, setInitialPrompt] = useState('');
+  const { token, logout } = useAuth();
 
   const handleNavigation = (e: CustomEvent<{ view: 'landing' | 'workspace'; prompt?: string }>) => {
     if (e.detail?.view) {
@@ -37,6 +41,10 @@ export default function App() {
     return () => window.removeEventListener('navigate', handleNavigation as EventListener);
   }, []);
 
+  if (!token) {
+    return <Auth />;
+  }
+
   return (
     <ReactLenis root>
       <div className="relative bg-zinc-50 min-h-screen text-zinc-900 font-sans selection:bg-zinc-900 selection:text-white">
@@ -56,7 +64,7 @@ export default function App() {
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.5, ease: "easeInOut" }}
             >
-              <Navbar />
+              <Navbar onLogout={logout} />
               <main>
                 <Hero onSelectPrompt={handleSelectPrompt} />
                 <Stats />
@@ -65,7 +73,7 @@ export default function App() {
               <footer className="py-8 text-center text-zinc-400 text-xs uppercase tracking-widest bg-zinc-100 font-unique">
                 © {new Date().getFullYear()} Polystrukt Engineering. All Rights Reserved.
               </footer>
-              <ChatWidget />
+              <ChatWidget token={token} />
             </motion.div>
           ) : (
             <motion.div
@@ -76,7 +84,7 @@ export default function App() {
               transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
               className="fixed inset-0 z-50 overflow-hidden bg-white"
             >
-              <Workspace onBack={() => setView('landing')} initialPrompt={initialPrompt} />
+              <Workspace onBack={() => setView('landing')} initialPrompt={initialPrompt} token={token} />
             </motion.div>
           )}
         </AnimatePresence>

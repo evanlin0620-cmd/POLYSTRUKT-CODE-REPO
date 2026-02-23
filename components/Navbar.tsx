@@ -1,9 +1,9 @@
 
 import React from 'react';
-import { Menu, Sparkles } from 'lucide-react';
+import { Menu, Sparkles, LogOut } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-export const Navbar: React.FC = () => {
+export const Navbar: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
   const handleStartGenerating = () => {
     window.dispatchEvent(new CustomEvent('navigate', { detail: { view: 'workspace' } }));
   };
@@ -86,6 +86,16 @@ export const Navbar: React.FC = () => {
               className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out pointer-events-none"
               aria-hidden="true"
             />
+          </motion.button>
+
+          <motion.button 
+            onClick={onLogout}
+            {...showcaseAnimation}
+            transition={buttonTransition}
+            className="font-unique text-[10px] font-bold text-zinc-700 tracking-[0.12em] px-6 py-2.5 rounded-xl border border-zinc-100 transition-all focus:outline-none hover:border-zinc-300 flex items-center gap-2 group" 
+          >
+            <LogOut size={14} className="text-zinc-500 group-hover:text-purple-500" />
+            <span>Logout</span>
           </motion.button>
         </div>
 

@@ -1,3 +1,4 @@
+
 import { Queue, Worker } from 'bullmq';
 import IORedis from 'ioredis';
 import { GoogleGenerativeAI } from '@google/generative-ai';
@@ -10,7 +11,10 @@ let connection;
 let generationQueue;
 
 try {
-  connection = new IORedis({ maxRetriesPerRequest: null });
+  if (!process.env.REDIS_URL) {
+    throw new Error('REDIS_URL not found in .env file');
+  }
+  connection = new IORedis(process.env.REDIS_URL, { maxRetriesPerRequest: null });
   await connection.ping();
   console.log('Connected to Redis');
 
@@ -51,6 +55,7 @@ try {
 
 } catch (error) {
   console.log('Could not connect to Redis. Using mock queue.');
+  console.error(error.message);
 
   generationQueue = {
     add: async (jobName, data) => {

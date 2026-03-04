@@ -4,6 +4,7 @@ import cors from 'cors';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import db from './db.mjs';
+import { generateComponent } from './ai.mjs';
 
 const app = express();
 const port = 3001;
@@ -64,6 +65,8 @@ app.post('/api/login', async (req, res) => {
     res.status(500).send('Error logging in');
   }
 });
+
+app.post('/api/generate', authenticateToken, generateComponent);
 
 
 // API routes

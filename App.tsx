@@ -73,7 +73,7 @@ export default function App() {
               <footer className="py-8 text-center text-zinc-400 text-xs uppercase tracking-widest bg-zinc-100 font-unique">
                 © {new Date().getFullYear()} Polystrukt Engineering. All Rights Reserved.
               </footer>
-              <ChatWidget token={token} />
+              <ChatWidget/>
             </motion.div>
           ) : (
             <motion.div
@@ -84,7 +84,7 @@ export default function App() {
               transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
               className="fixed inset-0 z-50 overflow-hidden bg-white"
             >
-              <Workspace onBack={() => setView('landing')} initialPrompt={initialPrompt} token={token} />
+              <Workspace onBack={() => setView('landing')} initialPrompt={initialPrompt} />
             </motion.div>
           )}
         </AnimatePresence>

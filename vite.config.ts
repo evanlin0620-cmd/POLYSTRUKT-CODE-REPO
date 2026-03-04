@@ -12,7 +12,7 @@ export default defineConfig(({ mode }) => {
         host: '0.0.0.0',
         proxy: {
           '/api': {
-            target: 'http://localhost:3001',
+            target: 'http://localhost:3001', // Change this to your backend server port
             changeOrigin: true,
             rewrite: (path) => path.replace(/^\/api/, ''),
           },
@@ -32,6 +32,8 @@ export default defineConfig(({ mode }) => {
         globals: true,
         environment: 'jsdom',
         setupFiles: './src/tests/setup.ts',
+        // you might want to disable it, if you don't have tests that rely on CSS
+        // since parsing CSS is slow
         css: true,
       },
     };

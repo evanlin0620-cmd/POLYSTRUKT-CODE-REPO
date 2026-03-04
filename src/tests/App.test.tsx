@@ -3,6 +3,14 @@ import '@testing-library/jest-dom';
 import { describe, it, expect, vi } from 'vitest';
 import App from '../../App';
 
+// Mock the useAuth hook
+vi.mock('../../hooks/useAuth', () => ({
+  useAuth: () => ({
+    token: 'dummy-token', // Provide a dummy token
+    logout: vi.fn(),
+  }),
+}));
+
 // Mock child components to isolate the App component
 vi.mock('../../components/Navbar', () => ({ Navbar: () => <div>Navbar Mock</div> }));
 vi.mock('../../components/Hero', () => ({ Hero: () => <div>Hero Mock</div> }));

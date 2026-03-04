@@ -11,6 +11,7 @@ import { Workspace } from './components/Workspace';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAuth } from './hooks/useAuth';
 import Auth from './components/Auth';
+import CommunityShowcase from './components/CommunityShowcase';
 import './src/index.css';
 
 const NOISE_SVG = `data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='1'/%3E%3C/svg%3E`;
@@ -69,6 +70,7 @@ export default function App() {
                 <Hero onSelectPrompt={handleSelectPrompt} />
                 <Stats />
                 <Gallery />
+                <CommunityShowcase />
               </main>
               <footer className="py-8 text-center text-zinc-400 text-xs uppercase tracking-widest bg-zinc-100 font-unique">
                 © {new Date().getFullYear()} Polystrukt Engineering. All Rights Reserved.

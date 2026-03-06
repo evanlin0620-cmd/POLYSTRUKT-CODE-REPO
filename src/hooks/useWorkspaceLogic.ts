@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
-import { TechnicalAIResponse, getTechnicalDesign } from '../services/geminiService';
-import { defaultPrompts } from './usePrompts';
+import { TechnicalAIResponse, getTechnicalResponse } from '../services/geminiService';
+import { defaultPrompts } from '../constants/prompts';
 import { useRecentPrompts } from './useRecentPrompts';
 
 export const useWorkspaceLogic = (initialPrompt = '') => {
@@ -14,17 +14,17 @@ export const useWorkspaceLogic = (initialPrompt = '') => {
   const hasModel = currentDesign !== null;
   const simulationMode = currentDesign?.simulationType && currentDesign.simulationType !== 'none' ? currentDesign.simulationType : 'stress';
 
-  const handleGenerate = useCallback(async () => {
-    if (!prompt.trim()) {
+  const generate = useCallback(async (promptToGenerate: string) => {
+    if (!promptToGenerate.trim()) {
       setIsShaking(true);
       setTimeout(() => setIsShaking(false), 500);
       return;
     }
     setIsGenerating(true);
-    addRecentPrompt(prompt);
+    addRecentPrompt(promptToGenerate);
     setCurrentDesign(null);
     try {
-      const design = await getTechnicalDesign(prompt);
+      const design = await getTechnicalResponse(promptToGenerate);
       setCurrentDesign(design);
       setShowDesignPanel(true);
     } catch (error) {
@@ -32,7 +32,11 @@ export const useWorkspaceLogic = (initialPrompt = '') => {
     } finally {
       setIsGenerating(false);
     }
-  }, [prompt, addRecentPrompt]);
+  }, [addRecentPrompt]);
+
+  const handleGenerate = useCallback(async () => {
+    await generate(prompt);
+  }, [generate, prompt]);
 
   const handleSurpriseMe = useCallback(() => {
     const randomIndex = Math.floor(Math.random() * defaultPrompts.length);
@@ -43,9 +47,9 @@ export const useWorkspaceLogic = (initialPrompt = '') => {
   useEffect(() => {
     if (initialPrompt) {
       setPrompt(initialPrompt);
-      handleGenerate();
+      generate(initialPrompt);
     }
-  }, [initialPrompt, handleGenerate, setPrompt]);
+  }, [initialPrompt, generate]);
 
   return {
     prompt,

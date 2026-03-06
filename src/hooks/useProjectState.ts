@@ -34,7 +34,7 @@ export const useProjectState = () => {
       alert("No model to export.");
       return;
     }
-    const link = document.createElement('a';
+    const link = document.createElement('a');
     link.href = design.modelUrl;
     // Extract filename from URL
     const filename = design.modelUrl.split('/').pop() || 'model.glb';

@@ -19,12 +19,13 @@
     "@react-three/drei": "9.120.4",
     "@react-three/fiber": "8.17.10",
     "@react-three/postprocessing": "2.16.2",
+    "@studio-freight/react-lenis": "^0.0.47",
     "bcrypt": "^6.0.0",
     "bullmq": "^5.66.3",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
-    "framer-motion": "11.13.1",
+    "framer-motion": "^11.13.1",
     "glob": "^13.0.6",
     "immutable": "^5.1.4",
     "ioredis": "^5.8.2",
@@ -39,6 +40,7 @@
     "zustand": "^5.0.11"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.2.1",
     "@tailwindcss/vite": "^4.1.18",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.1",
@@ -46,13 +48,16 @@
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.27",
     "concurrently": "^8.2.2",
     "jsdom": "^27.0.1",
+    "postcss": "^8.5.8",
+    "tailwindcss": "^4.2.1",
     "vite": "^6.4.1",
     "vitest": "^4.0.16"
   },
   "overrides": {
     "parse5": "6.0.1",
-    "minimatch": "10.2.2"
+    "minimatch": "10.2.4"
   }
 }

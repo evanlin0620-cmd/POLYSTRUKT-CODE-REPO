@@ -39,7 +39,7 @@ const App = () => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              <Workspace initialPrompt={prompt} />
+              <Workspace initialPrompt={prompt} onBack={logout} />
             </motion.div>
           ) : (
             <motion.div

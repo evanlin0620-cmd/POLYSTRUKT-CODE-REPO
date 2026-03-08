@@ -1,7 +1,9 @@
-import React from 'react';
+
+import React, { useState } from 'react';
 import { ArrowLeft, Database, Save, Download, MoreHorizontal, Info } from 'lucide-react';
 import { TechnicalAIResponse } from '../../services/geminiService';
 import { useProjectState } from '../../hooks/useProjectState';
+import { AnimatePresence, motion } from 'framer-motion';
 
 interface HeaderProps {
   onBack: () => void;
@@ -13,16 +15,19 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ onBack, hasModel, currentDesign, showDesignPanel, onToggleDesignPanel }) => {
   const { saveProject, exportProject } = useProjectState();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const handleSave = () => {
     if (currentDesign) {
       saveProject(currentDesign);
+      setIsMenuOpen(false);
     }
   };
 
   const handleExport = () => {
     if (currentDesign) {
       exportProject(currentDesign);
+      setIsMenuOpen(false);
     }
   };
 
@@ -59,11 +64,36 @@ export const Header: React.FC<HeaderProps> = ({ onBack, hasModel, currentDesign,
              >
                <Info size={18} />
              </button>
+             
+             {/* Desktop buttons */}
              <button data-testid="workspace-save-btn" onClick={handleSave} className="hidden sm:flex px-4 py-2 bg-white border border-zinc-200 rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-zinc-50 shadow-sm items-center gap-2 font-unique"><Save size={12} /> Save</button>
              <button data-testid="workspace-export-btn" onClick={handleExport} className="hidden sm:flex px-4 py-2 bg-zinc-900 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-zinc-800 shadow-lg items-center gap-2 font-unique"><Download size={12} /> Export</button>
+
+            {/* Mobile menu button */}
+            <div className="relative sm:hidden">
+              <button
+                onClick={() => setIsMenuOpen(o => !o)}
+                className="p-2 bg-white border border-zinc-200 rounded-lg text-zinc-400 hover:text-zinc-900 shadow-sm transition-colors"
+              >
+                <MoreHorizontal size={18} />
+              </button>
+              <AnimatePresence>
+                {isMenuOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                    transition={{ duration: 0.1 }}
+                    className="absolute right-0 mt-2 w-32 bg-white rounded-md shadow-lg py-1 z-50 border border-zinc-200/50"
+                  >
+                    <button onClick={handleSave} className="w-full text-left flex items-center gap-2 px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-100 font-unique"><Save size={14} /> Save</button>
+                    <button onClick={handleExport} className="w-full text-left flex items-center gap-2 px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-100 font-unique"><Download size={14} /> Export</button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
            </>
          )}
-         <button className="p-2 bg-white border border-zinc-200 rounded-lg text-zinc-400 hover:text-zinc-900 shadow-sm transition-colors"><MoreHorizontal size={18} /></button>
       </div>
     </header>
   );

@@ -2,6 +2,7 @@
   channel = "stable-24.05";
   packages = [
     pkgs.nodejs_20
+    pkgs.redis
   ];
   idx.extensions = [
     "svelte.svelte-vscode"

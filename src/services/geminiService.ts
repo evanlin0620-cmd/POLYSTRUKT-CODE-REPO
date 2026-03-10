@@ -53,29 +53,46 @@ const createJsonErrorResponse = (message: string, code: string, status: number):
 const pollForJobCompletion = async (jobId: string, onStatusUpdate: (status: string) => void): Promise<any> => {
   let attempts = 0;
   const maxAttempts = 120; // 2 minutes
+
   while (attempts < maxAttempts) {
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      const res = await fetch(`/api/generate/status/${jobId}`);
-      if (!res.ok) {
-        onStatusUpdate(`HTTP error! status: ${res.status}`);
-        continue;
-      }
-      const data = await res.json();
-      if (data.status === 'completed') {
-        return data.result;
-      } else if (data.status === 'failed') {
-        throw new Error(data.reason);
-      } else {
-        onStatusUpdate(data.status);
-      }
-    } catch (error) {
-      console.error("Polling error:", error);
-      onStatusUpdate("Polling failed");
-    }
+    await new Promise(resolve => setTimeout(resolve, 1000));
     attempts++;
+
+    const res = await fetch(`/api/generate/status/${jobId}`);
+
+    if (!res.ok) {
+        let errorReason = `Request failed with status ${res.status}`;
+        try {
+            const errorData = await res.json();
+            errorReason = errorData?.data?.reason || errorData?.data?.error || errorReason;
+        } catch (e) {
+            // Ignore if parsing fails
+        }
+        throw new Error(errorReason);
+    }
+
+    const data = await res.json();
+
+    switch (data.status) {
+      case 'completed':
+        onStatusUpdate('completed');
+        return data.data;
+      
+      case 'failed':
+        onStatusUpdate('failed');
+        throw new Error(data.data.reason || data.data.error || 'Job failed without a specific reason.');
+
+      case 'processing':
+        onStatusUpdate(`processing: ${data.data.state}`);
+        break;
+
+      default:
+        onStatusUpdate(`unknown status: ${data.status}`);
+        break;
+    }
   }
-  throw new Error("Job timed out");
+
+  throw new Error("Job timed out after 2 minutes.");
 };
 
 export const getTechnicalResponse = async (
@@ -130,8 +147,6 @@ export const getTechnicalResponse = async (
 
     const result = await pollForJobCompletion(jobId, onStatusUpdate);
     
-    // The result from the worker should already be in the correct format.
-    // We just need to resolve the model URL and add the status code.
     const modelKey = (result.modelUrl as string || "GEARBOX").toUpperCase().replace(/\s/g, '_') as keyof typeof MODEL_LIBRARY;
     const resolvedUrl = MODEL_LIBRARY[modelKey] || MODEL_LIBRARY.GEARBOX;
 

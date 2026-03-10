@@ -6,9 +6,21 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-const connection = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
-    maxRetriesPerRequest: null
+const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+
+const connection = new IORedis(redisUrl, {
+    maxRetriesPerRequest: null, // Required for BullMQ
+    enableReadyCheck: true,
+    retryStrategy: (times) => {
+        const delay = Math.min(times * 250, 2000);
+        console.log(`Worker Redis connection retry attempt ${times}, retrying in ${delay}ms`);
+        return delay;
+    }
 });
+
+connection.on('connect', () => console.log('Worker Redis connected successfully.'));
+connection.on('error', (err) => console.error('Worker Redis connection error:', err));
+
 
 const systemPrompt = `You are an expert CAD AI assistant. You must reply with a single, valid JSON object that conforms to the following TypeScript interface:
 
@@ -86,4 +98,8 @@ const worker = new Worker('ai-generation', async (job) => {
     }
 }, { connection });
 
-console.log("Worker started...");
+worker.on('error', (error) => {
+    console.error('BullMQ Worker Error:', error);
+});
+
+console.log("Worker started with robust Redis connection...");

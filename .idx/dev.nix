@@ -3,7 +3,9 @@
   packages = [
     pkgs.nodejs_20
     pkgs.redis
+    pkgs.docker
   ];
+  services.docker.enable = true;
   idx.extensions = [
     "svelte.svelte-vscode"
     "vue.volar"

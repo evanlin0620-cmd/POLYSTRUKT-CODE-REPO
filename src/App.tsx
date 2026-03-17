@@ -11,6 +11,7 @@ import { Workspace } from './components/Workspace';
 import { ReactLenis } from '@studio-freight/react-lenis';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
+import { HeroScrollDemo } from './components/HeroScrollDemo';
 
 const App = () => {
   const { token, logout } = useAuth();
@@ -50,6 +51,7 @@ const App = () => {
             >
               <Hero onSelectPrompt={handleSelectPrompt} />
               <Stats />
+              <HeroScrollDemo />
               <Gallery />
               <CommunityShowcase />
             </motion.div>

@@ -4,6 +4,7 @@
     pkgs.nodejs_20
     pkgs.redis
     pkgs.docker
+    pkgs.docker-compose
   ];
   services.docker.enable = true;
   idx.extensions = [

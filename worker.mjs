@@ -40,10 +40,13 @@ interface TechnicalAIResponse {
 Your response must be only the JSON object, with no other text or formatting like markdown backticks.
 `;
 
-const worker = new Worker('ai-generation', async (job) => {
+const worker = new Worker('ai-queue', async (job) => {
+    console.log('[WORKER] Received a new job.');
     const { prompt, chatHistory } = job.data;
+    console.log(`[WORKER] Job data: prompt length ${prompt.length}, chatHistory length ${chatHistory?.length || 0}`);
 
     try {
+        console.log('[WORKER] Formatting chat history for AI model.');
         const history = (chatHistory || []).map(msg => ({
             role: msg.role,
             parts: [{ text: msg.text }]
@@ -55,21 +58,28 @@ const worker = new Worker('ai-generation', async (job) => {
             ...history,
             { role: 'user', parts: [{ text: prompt }] }
         ];
+        console.log('[WORKER] Content prepared. Calling model.generateContent...');
 
         const result = await model.generateContent({ contents });
+        console.log('[WORKER] model.generateContent call completed.');
+
         const response = await result.response;
+        console.log('[WORKER] Awaited result.response.');
+
         const text = response.text();
+        console.log('[WORKER] Got response text. Attempting to parse JSON.');
 
         let jsonResponse;
         try {
             jsonResponse = JSON.parse(text);
+            console.log('[WORKER] Successfully parsed JSON from model response.');
         } catch (e) {
-            console.error("Failed to parse JSON from model response:", e);
-            console.error("Original model response text:", text);
+            console.error("[WORKER] Failed to parse JSON from model response:", e);
+            console.error("[WORKER] Original model response text:", text);
             // Even on parse failure, we need to return some valid TechnicalAIResponse
-            return { 
+            return {
                 analysis: "Error: Invalid JSON response from AI.",
-                specs: "", 
+                specs: "",
                 action: "RECOVERY_MODE",
                 modelUrl: "",
                 simulationType: 'none',
@@ -80,9 +90,17 @@ const worker = new Worker('ai-generation', async (job) => {
             };
         }
 
+        console.log('[WORKER] Job processed successfully. Returning JSON response.');
         return jsonResponse;
     } catch (error) {
-        console.error("Error in worker while generating component:", error);
+        console.error("[WORKER] CRITICAL: An error occurred in the main try block of the worker.", error);
+        console.error("[WORKER] Error Name:", error.name);
+        console.error("[WORKER] Error Message:", error.message);
+        console.error("[WORKER] Error Stack:", error.stack);
+        if (error.cause) {
+           console.error("[WORKER] Underlying Cause:", error.cause);
+        }
+
         // On general error, return a TechnicalAIResponse-compliant error object
         return {
             analysis: "Error: AI generation failed in worker.",
@@ -97,6 +115,14 @@ const worker = new Worker('ai-generation', async (job) => {
         };
     }
 }, { connection });
+
+worker.on('completed', (job) => {
+  console.log(`[WORKER] Job ${job.id} has completed.`);
+});
+
+worker.on('failed', (job, err) => {
+  console.error(`[WORKER] Job ${job.id} has failed with error:`, err);
+});
 
 worker.on('error', (error) => {
     console.error('BullMQ Worker Error:', error);

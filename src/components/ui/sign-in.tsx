@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Eye, EyeOff, Shield, Zap, Lock, Mail, ArrowRight, Sparkles, Check, AlertCircle, KeyRound, X } from 'lucide-react';
+import { Eye, EyeOff, Shield, Zap, Lock, Mail, ArrowRight, Sparkles, Check, AlertCircle, KeyRound, X, Github } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 // --- HELPER COMPONENTS (ICONS) ---
@@ -11,6 +11,15 @@ const GoogleIcon = () => (
         <path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238C29.211 35.091 26.715 36 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z" />
         <path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303c-.792 2.237-2.231 4.166-4.087 5.571l6.19 5.238C42.022 35.026 44 30.038 44 24c0-2.641-.21-5.236-.611-7.743z" />
     </svg>
+);
+
+const MicrosoftIcon = () => (
+    <div className="grid grid-cols-2 gap-[2px] w-4 h-4 bg-transparent shrink-0">
+        <div className="bg-[#f25022] w-[7px] h-[7px]" />
+        <div className="bg-[#7fba00] w-[7px] h-[7px]" />
+        <div className="bg-[#00a4ef] w-[7px] h-[7px]" />
+        <div className="bg-[#ffb900] w-[7px] h-[7px]" />
+    </div>
 );
 
 // --- TYPE DEFINITIONS ---
@@ -535,7 +544,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
                          {rememberSession && <Check size={10} className="text-white font-bold" />}
                        </div>
                     </div>
-                    <span className="text-muted-foreground group-hover:text-foreground transition-colors">Remember Session</span>
+                    <span className="text-muted-foreground group-hover:text-foreground transition-colors">Remember Me</span>
                   </label>
                   <a href="#" onClick={(e) => { e.preventDefault(); setIsForgotPasswordOpen(true); onResetPassword?.(); }} className="text-indigo-500 hover:text-indigo-400 transition-colors">Forgot Password?</a>
                 </motion.div>
@@ -563,19 +572,62 @@ export const SignInPage: React.FC<SignInPageProps> = ({
                 <span className="px-6 text-[8px] font-black text-muted-foreground uppercase tracking-[0.5em] bg-background absolute">Or continue with</span>
               </div>
  
-              <motion.button 
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.7 }}
-                whileHover={!isLoading ? { scale: 1.02, backgroundColor: "var(--accent)" } : {}}
-                whileTap={{ scale: 0.95 }}
-                onClick={onGoogleSignIn} 
-                disabled={isLoading}
-                className="w-full flex items-center justify-center gap-4 border border-border rounded-2xl py-5 bg-accent shadow-sm transition-all font-black text-[9px] uppercase tracking-[0.4em] text-muted-foreground disabled:opacity-50 disabled:cursor-not-allowed hover:text-foreground"
-              >
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <motion.button 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.7 }}
+                  whileHover={!isLoading ? { scale: 1.02, backgroundColor: "var(--accent)" } : {}}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={onGoogleSignIn} 
+                  disabled={isLoading}
+                  className="flex items-center justify-center gap-2.5 border border-border rounded-2xl py-4 bg-accent shadow-sm transition-all font-black text-[9px] uppercase tracking-[0.2em] text-muted-foreground disabled:opacity-50 disabled:cursor-not-allowed hover:text-foreground hover:border-indigo-500/30"
+                  type="button"
+                >
                   {isLoading ? <div className="w-4 h-4 border-2 border-foreground/20 border-t-foreground rounded-full animate-spin" /> : <GoogleIcon />}
-                  Google Account
-              </motion.button>
+                  <span>Google</span>
+                </motion.button>
+
+                <motion.button 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.75 }}
+                  whileHover={!isLoading ? { scale: 1.02, backgroundColor: "var(--accent)" } : {}}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => {
+                    if (!isLoading && onGoogleSignIn) {
+                      console.log("[AUTH] Triggered GitHub login process simulation.");
+                      onGoogleSignIn();
+                    }
+                  }} 
+                  disabled={isLoading}
+                  className="flex items-center justify-center gap-2.5 border border-border rounded-2xl py-4 bg-accent shadow-sm transition-all font-black text-[9px] uppercase tracking-[0.2em] text-muted-foreground disabled:opacity-50 disabled:cursor-not-allowed hover:text-foreground hover:border-purple-500/30"
+                  type="button"
+                >
+                  <Github size={16} className="text-foreground" />
+                  <span>GitHub</span>
+                </motion.button>
+
+                <motion.button 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.8 }}
+                  whileHover={!isLoading ? { scale: 1.02, backgroundColor: "var(--accent)" } : {}}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => {
+                    if (!isLoading && onGoogleSignIn) {
+                      console.log("[AUTH] Triggered Microsoft login process simulation.");
+                      onGoogleSignIn();
+                    }
+                  }} 
+                  disabled={isLoading}
+                  className="flex items-center justify-center gap-2.5 border border-border rounded-2xl py-4 bg-accent shadow-sm transition-all font-black text-[9px] uppercase tracking-[0.2em] text-muted-foreground disabled:opacity-50 disabled:cursor-not-allowed hover:text-foreground hover:border-sky-500/30"
+                  type="button"
+                >
+                  <MicrosoftIcon />
+                  <span>Microsoft</span>
+                </motion.button>
+              </div>
 
               <motion.p 
                 initial={{ opacity: 0 }}

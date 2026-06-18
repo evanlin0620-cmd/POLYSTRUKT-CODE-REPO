@@ -14,7 +14,9 @@ interface User {
 interface AuthState {
   token: string | null;
   user: User | null;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, rememberMe?: boolean) => Promise<{ mfaRequired?: boolean; email?: string; _debugOtp?: string } | void>;
+  verifyOtp: (email: string, otp: string, rememberMe?: boolean) => Promise<void>;
+  forgotPassword: (email: string) => Promise<string>;
   register: (
     email: string, 
     password: string, 
@@ -34,11 +36,11 @@ export const useAuth = create<AuthState>()(
       (set) => ({
         token: null,
         user: null,
-        login: async (email, password) => {
+        login: async (email, password, rememberMe) => {
           const res = await fetch('/api/auth/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
+            body: JSON.stringify({ email, password, rememberMe })
           });
           const body = await res.text();
           if (!res.ok) {
@@ -55,8 +57,60 @@ export const useAuth = create<AuthState>()(
           }
           if (body && body.trim().startsWith('{')) {
             const data = JSON.parse(body);
+            if (data.mfaRequired) {
+              return { mfaRequired: true, email: data.email, _debugOtp: data._debugOtp };
+            }
             set({ token: data.token, user: data.user });
           }
+        },
+        verifyOtp: async (email, otp, rememberMe) => {
+          const res = await fetch('/api/auth/verify-otp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, otp, rememberMe })
+          });
+          const body = await res.text();
+          if (!res.ok) {
+            let errorMessage = 'Verification failed';
+            if (body && body.trim().startsWith('{')) {
+              try {
+                const data = JSON.parse(body);
+                errorMessage = data.error || errorMessage;
+              } catch (e) {}
+            } else if (body) {
+              errorMessage = body;
+            }
+            throw new Error(errorMessage);
+          }
+          if (body && body.trim().startsWith('{')) {
+            const data = JSON.parse(body);
+            set({ token: data.token, user: data.user });
+          }
+        },
+        forgotPassword: async (email) => {
+          const res = await fetch('/api/auth/forgot-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+          });
+          const body = await res.text();
+          if (!res.ok) {
+            let errorMessage = 'Failed to request password reset';
+            if (body && body.trim().startsWith('{')) {
+              try {
+                const data = JSON.parse(body);
+                errorMessage = data.error || errorMessage;
+              } catch (e) {}
+            } else if (body) {
+              errorMessage = body;
+            }
+            throw new Error(errorMessage);
+          }
+          if (body && body.trim().startsWith('{')) {
+            const data = JSON.parse(body);
+            return data.message || 'Restoration requested successfully.';
+          }
+          return 'Restoration requested successfully.';
         },
         register: async (email, password, username, role, skills, certifications) => {
           const res = await fetch('/api/auth/register', {

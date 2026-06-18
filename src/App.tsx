@@ -16,10 +16,12 @@ import { ScrollShowcase } from './components/ScrollShowcase';
 import { SignInPage } from './components/ui/sign-in';
 import { RegisterPage } from './components/ui/register-page';
 import { PremiumSignUp } from './components/ui/premium-signup';
+import { OTPPage } from './components/ui/otp-page';
+import { InactivityWarning } from './components/ui/inactivity-warning';
 import { ReactLenis, useLenis } from '@studio-freight/react-lenis';
 import { AnimatePresence, motion, useScroll, useSpring } from 'motion/react';
-import { useState, useEffect, useCallback } from 'react';
-import { ArrowUp, Check } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { ArrowUp, Check, X, ArrowRight } from 'lucide-react';
 
 import { SimulationTest } from './components/SimulationTest';
 import { ThemeCustomizer } from './components/ui/theme-customizer';
@@ -68,12 +70,17 @@ const ScrollToTop = () => {
 const App = () => {
   const token = useAuth(state => state.token);
   const login = useAuth(state => state.login);
+  const verifyOtp = useAuth(state => state.verifyOtp);
   const register = useAuth(state => state.register);
   const logout = useAuth(state => state.logout);
   const [prompt, setPrompt] = useState('');
   const [showSignIn, setShowSignIn] = useState(false);
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
   const [showPricing, setShowPricing] = useState(false);
+  const [isMfaActive, setIsMfaActive] = useState(false);
+  const [mfaEmail, setMfaEmail] = useState('');
+  const [mfaDebugOtp, setMfaDebugOtp] = useState('');
+  const [mfaRememberMe, setMfaRememberMe] = useState(false);
   const [showDemo, setShowDemo] = useState(false);
   const [showDiagnosticLab, setShowDiagnosticLab] = useState(false);
   const [showSimulation, setShowSimulation] = useState(false);
@@ -96,6 +103,72 @@ const App = () => {
     setTimeout(() => {
       setIsTransitioning(false);
     }, 1550);
+  };
+
+  const [showInactivityWarning, setShowInactivityWarning] = useState(false);
+  const [inactivitySecondsLeft, setInactivitySecondsLeft] = useState(300);
+  const lastActivityRef = useRef<number>(Date.now());
+
+  // Track user activity to prevent idle logout (30 minutes logout, 25 minutes warning)
+  useEffect(() => {
+    if (!token) {
+      setShowInactivityWarning(false);
+      return;
+    }
+
+    lastActivityRef.current = Date.now();
+
+    const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+    
+    const keepAlive = () => {
+      lastActivityRef.current = Date.now();
+    };
+
+    // Register active event listeners on window
+    activityEvents.forEach(event => {
+      window.addEventListener(event, keepAlive, { passive: true });
+    });
+
+    const interval = setInterval(() => {
+      const elapsedMs = Date.now() - lastActivityRef.current;
+      const elapsedMinutes = elapsedMs / (1000 * 60);
+
+      if (elapsedMinutes >= 30) {
+        // Log out immediately after 30 minutes of real inactivity
+        clearInterval(interval);
+        logout();
+        setShowInactivityWarning(false);
+        showAppNotification("Identity Session Expired due to Inactivity.", {
+          label: "Re-authenticate",
+          onClick: () => {
+            navigateWithTransition(() => {
+              setAuthMode('signin');
+              setShowSignIn(true);
+            });
+          }
+        });
+      } else if (elapsedMinutes >= 25) {
+        // Show warning modal at 25 minutes of inactivity
+        setShowInactivityWarning(true);
+        const remainingSeconds = Math.max(0, Math.floor((30 * 60 * 1000 - elapsedMs) / 1000));
+        setInactivitySecondsLeft(remainingSeconds);
+      } else {
+        setShowInactivityWarning(false);
+      }
+    }, 1000);
+
+    return () => {
+      activityEvents.forEach(event => {
+        window.removeEventListener(event, keepAlive);
+      });
+      clearInterval(interval);
+    };
+  }, [token, logout]);
+
+  const handleExtendSession = () => {
+    lastActivityRef.current = Date.now();
+    setShowInactivityWarning(false);
+    showAppNotification("Session extended. Continuing workspace operations.");
   };
 
   useEffect(() => {
@@ -186,13 +259,23 @@ const App = () => {
   const [isAuthLoading, setIsAuthLoading] = useState(false);
   const [authSuccess, setAuthSuccess] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
-  const [appNotification, setAppNotification] = useState<string | null>(null);
+  const [appNotification, setAppNotification] = useState<string | { message: string; action?: { label: string; onClick: () => void } } | null>(null);
 
-  const showAppNotification = (message: string) => {
-    setAppNotification(message);
+  const showAppNotification = (
+    message: string,
+    action?: { label: string; onClick: () => void }
+  ) => {
+    setAppNotification(action ? { message, action } : message);
     setTimeout(() => {
-      setAppNotification(null);
-    }, 4000);
+      setAppNotification((prev) => {
+        if (!prev) return null;
+        const prevMessage = typeof prev === 'string' ? prev : prev.message;
+        if (prevMessage === message) {
+          return null;
+        }
+        return prev;
+      });
+    }, action ? 20000 : 4000);
   };
 
   const handleSimulationClick = () => {
@@ -248,7 +331,15 @@ const App = () => {
     try {
       console.log(`[Auth] Attempting ${authMode}...`);
       if (authMode === 'signin') {
-        await login(email, password);
+        const checked = formData.get('rememberMe') === 'true' || formData.get('rememberMe') === 'on' || localStorage.getItem('persistent_session') !== 'false';
+        setMfaRememberMe(checked);
+        const result = await login(email, password, checked);
+        if (result && (result as any).mfaRequired) {
+          setMfaEmail((result as any).email);
+          setMfaDebugOtp((result as any)._debugOtp || '');
+          setIsMfaActive(true);
+          return;
+        }
       } else {
         await register(email, password, username, role, skills, certifications);
       }
@@ -275,6 +366,32 @@ const App = () => {
       } else {
         setAuthError(err.message || "Authentication failed.");
       }
+    } finally {
+      setIsAuthLoading(false);
+    }
+  };
+
+  const handleOTPVerification = async (otpCode: string) => {
+    setIsAuthLoading(true);
+    setAuthError(null);
+    try {
+      console.log(`[Auth] Attempting MFA verification for ${mfaEmail}...`);
+      await verifyOtp(mfaEmail, otpCode, mfaRememberMe);
+      const currentToken = useAuth.getState().token;
+      if (currentToken) {
+        setAuthSuccess(true);
+        setAuthError(null);
+        setTimeout(() => {
+          setShowSignIn(false);
+          setShowPricing(false);
+          setSelectedPlan(null);
+          setAuthSuccess(false);
+          setIsMfaActive(false);
+        }, 800);
+      }
+    } catch (err: any) {
+      console.error('[Auth] MFA Error:', err);
+      setAuthError(err.message || 'MFA code verification failed.');
     } finally {
       setIsAuthLoading(false);
     }
@@ -426,7 +543,19 @@ const App = () => {
               className="relative z-50 bg-background min-h-screen"
             >
               <div className="w-full">
-                {selectedPlan && authMode === 'signup' ? (
+                {isMfaActive ? (
+                  <OTPPage 
+                    email={mfaEmail}
+                    debugOtp={mfaDebugOtp}
+                    onVerify={handleOTPVerification}
+                    onCancel={() => {
+                      setIsMfaActive(false);
+                      setAuthError(null);
+                    }}
+                    isLoading={isAuthLoading}
+                    error={authError}
+                  />
+                ) : selectedPlan && authMode === 'signup' ? (
                   <PremiumSignUp 
                     planName={selectedPlan}
                     onSignUp={handleAuth}
@@ -608,15 +737,61 @@ const App = () => {
         <AnimatePresence>
           {appNotification && (
             <motion.div 
-              initial={{ opacity: 0, y: 50, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 20, scale: 0.95 }}
-              className="fixed bottom-6 right-6 z-[250] p-4 bg-zinc-900 border border-white/10 rounded-2xl shadow-2xl flex items-center gap-3 backdrop-blur-xl text-white max-w-sm"
+              initial={{ opacity: 0, y: 50, scale: 0.95, filter: "blur(4px)" }}
+              animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+              exit={{ opacity: 0, y: 20, scale: 0.95, filter: "blur(4px)" }}
+              className="fixed bottom-6 right-6 z-[250] p-5 bg-zinc-950 border border-white/10 rounded-[1.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.8)] flex flex-col gap-3.5 backdrop-blur-xl text-white max-w-sm min-w-[280px]"
             >
-              <div className="flex-1 text-[11px] font-mono uppercase tracking-widest leading-relaxed">
-                {appNotification}
+              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-600 rounded-t-full" />
+              
+              <div className="flex items-start gap-3">
+                <div className="h-5 w-5 rounded bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0 select-none">
+                  <span className="text-[9px] font-black font-mono">i</span>
+                </div>
+                <div className="flex-1 text-[10px] font-mono uppercase tracking-widest leading-relaxed text-zinc-300">
+                  {typeof appNotification === 'string' ? appNotification : appNotification.message}
+                </div>
+                <button 
+                  onClick={() => setAppNotification(null)}
+                  className="text-zinc-500 hover:text-white transition-colors cursor-pointer"
+                  type="button"
+                >
+                  <X size={12} />
+                </button>
               </div>
+
+              {typeof appNotification !== 'string' && appNotification.action && (
+                <div className="flex justify-end pt-1">
+                  <button
+                    onClick={() => {
+                      if (appNotification && typeof appNotification !== 'string' && appNotification.action) {
+                        appNotification.action.onClick();
+                      }
+                      setAppNotification(null);
+                    }}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white text-black font-black text-[9px] uppercase tracking-[0.2em] transition-all hover:bg-zinc-200 cursor-pointer active:scale-95"
+                    type="button"
+                  >
+                    <span>{appNotification.action.label}</span>
+                    <ArrowRight size={10} />
+                  </button>
+                </div>
+              )}
             </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Security Inactivity Warning Protocol */}
+        <AnimatePresence>
+          {showInactivityWarning && (
+            <InactivityWarning 
+              secondsLeft={inactivitySecondsLeft}
+              onExtend={handleExtendSession}
+              onLogout={() => {
+                logout();
+                setShowInactivityWarning(false);
+              }}
+            />
           )}
         </AnimatePresence>
 

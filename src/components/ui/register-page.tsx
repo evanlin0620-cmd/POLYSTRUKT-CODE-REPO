@@ -4,6 +4,7 @@ import {
   User, 
   Mail, 
   Lock, 
+  Unlock,
   ArrowRight, 
   Sparkles, 
   Shield, 
@@ -1944,13 +1945,38 @@ const EngineeringRoleSelector = ({
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = React.useRef<HTMLDivElement>(null);
 
-  const roles = [
-    'Mechanical Engineer',
-    'Structural Designer',
-    'Additive Manufacturing Lead',
-    'Topology Optimization Specialist',
-    'Aerospace Systems Architect'
+  const rolesInfo = [
+    {
+      role: 'Mechanical Engineer',
+      description: 'Designs and analyzes physical components, thermal pathways, and cinematic mechanical systems.'
+    },
+    {
+      role: 'Structural Designer',
+      description: 'Optimizes load-bearing architectures for physical integrity, safety profiles, and material science.'
+    },
+    {
+      role: 'Additive Manufacturing Lead',
+      description: 'Manages sub-millimeter 3D toolpaths, binder jetting parameters, and material extrusion feeds.'
+    },
+    {
+      role: 'Topology Optimization Specialist',
+      description: 'Runs generative evolutionary stress solvers to produce mathematically ideal weight-to-stiffness profiles.'
+    },
+    {
+      role: 'Aerospace Systems Architect',
+      description: 'Coordinates hypersonic propulsion hulls, thermal protection flight structures, and high-composites.'
+    },
+    {
+      role: 'Quantum Structural Researcher',
+      description: 'Pioneers molecular-level stress tensors and quantum metallurgical lattices for hyper-dense materials.'
+    },
+    {
+      role: 'Neural Network Designer',
+      description: 'Trains deep learning networks and surrogate models to predict complex finite element stress maps instantly.'
+    }
   ];
+
+  const selectedRoleObj = rolesInfo.find(r => r.role === value) || rolesInfo[0];
 
   useEffect(() => {
     const handleOutsideClick = (e: MouseEvent) => {
@@ -1976,18 +2002,23 @@ const EngineeringRoleSelector = ({
         <button
           type="button"
           onClick={() => setIsOpen(!isOpen)}
-          className="w-full bg-black border border-white/5 hover:border-white/10 rounded-2xl p-6 pl-16 pr-12 text-white font-mono placeholder:text-zinc-800 focus:outline-none focus:border-purple-500/50 focus:bg-zinc-950/50 transition-all uppercase text-sm tracking-widest relative z-10 flex items-center justify-between cursor-pointer text-left"
+          className="w-full bg-black border border-white/5 hover:border-white/10 rounded-2xl p-6 pl-16 pr-12 text-white font-mono placeholder:text-zinc-800 focus:outline-none focus:border-purple-500/50 focus:bg-zinc-950/50 transition-all uppercase relative z-10 flex flex-col gap-1.5 cursor-pointer text-left"
         >
-          <div className="flex items-center gap-3">
-            <span className="text-white font-semibold">{value}</span>
+          <div className="flex items-center justify-between w-full">
+            <span className="text-white font-semibold text-xs tracking-widest">{value}</span>
+            <ChevronDown
+              size={18}
+              className={`text-zinc-500 transition-transform duration-300 ${isOpen ? 'rotate-180 text-purple-500' : ''}`}
+            />
           </div>
-          <ChevronDown
-            size={18}
-            className={`text-zinc-500 transition-transform duration-300 ${isOpen ? 'rotate-180 text-purple-500' : ''}`}
-          />
+          {selectedRoleObj && (
+            <span className="text-[9px] text-zinc-500 font-mono tracking-normal leading-relaxed max-w-sm select-none normal-case">
+              {selectedRoleObj.description}
+            </span>
+          )}
         </button>
 
-        <div className="absolute left-6 top-1/2 -translate-y-1/2 text-zinc-650 z-25 pointer-events-none">
+        <div className="absolute left-6 top-6 text-zinc-650 z-25 pointer-events-none">
           <Briefcase size={18} />
         </div>
 
@@ -2003,8 +2034,8 @@ const EngineeringRoleSelector = ({
               transition={{ duration: 0.2, ease: "easeOut" }}
               className="absolute top-full left-0 right-0 mt-3 bg-zinc-950 border border-purple-500/30 rounded-2xl shadow-[0_15px_35px_-5px_rgba(0,0,0,0.9),0_0_20px_rgba(168,85,247,0.15)] overflow-hidden z-50 divide-y divide-white/[0.03]"
             >
-              <div className="max-h-[220px] overflow-y-auto custom-scrollbar">
-                {roles.map((role) => {
+              <div className="max-h-[320px] overflow-y-auto custom-scrollbar">
+                {rolesInfo.map(({ role, description }) => {
                   const isSelected = role === value;
                   return (
                     <button
@@ -2014,16 +2045,23 @@ const EngineeringRoleSelector = ({
                         onChange(role);
                         setIsOpen(false);
                       }}
-                      className={`w-full flex items-center justify-between p-5 text-left font-mono text-xs uppercase tracking-wider transition-all duration-150 cursor-pointer ${
+                      className={`w-full flex flex-col items-start gap-1 p-5 text-left font-mono transition-all duration-150 cursor-pointer ${
                         isSelected 
-                          ? 'bg-purple-950/40 text-purple-300 font-bold' 
+                          ? 'bg-purple-950/40 text-purple-300' 
                           : 'text-zinc-400 hover:text-white hover:bg-zinc-900/50'
                       }`}
                     >
-                      <span>{role}</span>
-                      {isSelected && (
-                        <div className="w-1.5 h-1.5 rounded-full bg-purple-400 shadow-[0_0_8px_rgba(168,85,247,0.8)]" />
-                      )}
+                      <div className="w-full flex items-center justify-between">
+                        <span className={`text-xs uppercase tracking-wider ${isSelected ? 'font-bold text-purple-300' : 'text-zinc-300'}`}>{role}</span>
+                        {isSelected && (
+                          <div className="w-1.5 h-1.5 rounded-full bg-purple-400 shadow-[0_0_8px_rgba(168,85,247,0.8)]" />
+                        )}
+                      </div>
+                      <span className={`text-[9px] leading-relaxed select-none normal-case tracking-normal text-left font-mono ${
+                        isSelected ? 'text-purple-450' : 'text-zinc-650'
+                      }`}>
+                        {description}
+                      </span>
                     </button>
                   );
                 })}
@@ -2442,7 +2480,28 @@ const TerminalInput = ({ label, name, type = "text", placeholder, value, icon, o
           )}
         </AnimatePresence>
         <div className="absolute left-6 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within:text-purple-500 transition-colors">
-          {icon}
+          {name === 'password' ? (
+            <div className="relative w-[18px] h-[18px] flex items-center justify-center">
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div
+                  key={showPassword ? 'unlocked' : 'locked'}
+                  initial={{ rotate: -45, scale: 0.6, opacity: 0 }}
+                  animate={{ rotate: 0, scale: 1, opacity: 1 }}
+                  exit={{ rotate: 45, scale: 0.6, opacity: 0 }}
+                  transition={{ type: "spring", stiffness: 350, damping: 20 }}
+                  className="absolute flex items-center justify-center"
+                >
+                  {showPassword ? (
+                    <Unlock size={18} className="text-emerald-400 drop-shadow-[0_0_6px_rgba(52,211,153,0.4)]" />
+                  ) : (
+                    <Lock size={18} className="text-purple-400 drop-shadow-[0_0_6px_rgba(168,85,247,0.4)]" />
+                  )}
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          ) : (
+            icon
+          )}
         </div>
          <input 
           ref={inputRef}

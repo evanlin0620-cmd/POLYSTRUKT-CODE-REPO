@@ -250,7 +250,10 @@ async function startServer() {
       users.push(newUser);
       await saveData(USERS_FILE, users);
 
-      const token = jwt.sign({ id: newUser.id, email: newUser.email }, JWT_SECRET, { expiresIn: '7d' });
+      const rememberMe = req.body.rememberMe === true;
+      const expiresIn = rememberMe ? '30d' : '7d';
+      console.log(`[AUTH] Registering user and generating session token with rememberMe=${rememberMe} -> expiration time envelope set to ${expiresIn}`);
+      const token = jwt.sign({ id: newUser.id, email: newUser.email }, JWT_SECRET, { expiresIn });
       res.status(201).json({ 
         token, 
         user: { 
@@ -266,6 +269,9 @@ async function startServer() {
       res.status(500).json({ error: 'Registration failed' });
     }
   });
+
+  // Store standard TFA configurations
+  const mfaStore = new Map();
 
   app.post('/api/auth/login', async (req, res) => {
     try {
@@ -283,7 +289,62 @@ async function startServer() {
         return res.status(401).json({ error: 'Invalid identity credentials' });
       }
 
-      const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
+      // Generate a 6-digit cryptographic-simulated OTP code
+      const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+      // Store in memory with 5-minute expiration
+      mfaStore.set(user.email.toLowerCase(), {
+        otp: otpCode,
+        user,
+        expiresAt: Date.now() + 5 * 60 * 1000
+      });
+
+      console.log(`\n======================================================`);
+      console.log(`🔐 [2FA SERVICE] Verification Token Dispatched`);
+      console.log(`📧 Registered Email Address: ${user.email}`);
+      console.log(`🔑 Verification Code (OTP):  ${otpCode}`);
+      console.log(`======================================================\n`);
+
+      res.json({ 
+        mfaRequired: true, 
+        email: user.email,
+        _debugOtp: otpCode // Expose for offline/sandbox testing and copy-paste in AI Studio preview
+      });
+    } catch (err) {
+      if (err instanceof z.ZodError) return res.status(400).json({ error: err.errors[0].message });
+      res.status(500).json({ error: 'Authentication failed' });
+    }
+  });
+
+  app.post('/api/auth/verify-otp', async (req, res) => {
+    try {
+      const { email, otp, rememberMe } = req.body;
+      if (!email || !otp) {
+        return res.status(400).json({ error: 'Email and verification code are required' });
+      }
+
+      const entry = mfaStore.get(email.toLowerCase());
+
+      if (!entry) {
+        return res.status(400).json({ error: 'MFA session not active. Please sign in again.' });
+      }
+
+      if (Date.now() > entry.expiresAt) {
+        mfaStore.delete(email.toLowerCase());
+        return res.status(410).json({ error: 'Verification code expired. Please request a new one.' });
+      }
+
+      if (entry.otp !== otp) {
+        return res.status(401).json({ error: 'Incorrect verification code. Please check and try again.' });
+      }
+
+      // Authentication complete! Elevate session
+      const user = entry.user;
+      mfaStore.delete(email.toLowerCase());
+
+      const expiresIn = rememberMe === true ? '30d' : '7d';
+      console.log(`[AUTH] Generating session token with rememberMe=${rememberMe} -> expiration time envelope set to ${expiresIn}`);
+      const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn });
       res.json({ 
         token, 
         user: { 
@@ -295,8 +356,7 @@ async function startServer() {
         } 
       });
     } catch (err) {
-      if (err instanceof z.ZodError) return res.status(400).json({ error: err.errors[0].message });
-      res.status(500).json({ error: 'Authentication failed' });
+      res.status(500).json({ error: 'Two-factor verification failed' });
     }
   });
 
@@ -306,15 +366,30 @@ async function startServer() {
       const users = await loadData(USERS_FILE);
       const user = users.find(u => u.email === email);
       
+      const resetToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      
       if (!user) {
-        // Return a positive response to prevent user email enumeration, which is standard security practice, but state it matches safety protocol
+        // Log simulation even if email isn't in database, matching production safety envelope but indicating simulation
+        console.log(`\n======================================================`);
+        console.log(`✉️ [MAIL SERVICE] Simulated Reset Request (Non-registered Email)`);
+        console.log(`📧 Input Recipient:    ${email}`);
+        console.log(`🛡️ Safety Mode:        Anti-Enumeration Active`);
+        console.log(`======================================================\n`);
+        
         return res.json({ 
           success: true, 
           message: 'If this identity is registered in Polystrukt, a restoration link is being dispatched.' 
         });
       }
 
-      console.log(`[AUTH] Password restoration requested for ${email}. Generated temporary OAuth hash node.`);
+      console.log(`\n======================================================`);
+      console.log(`✉️ [MAIL SERVICE] Simulated Password Reset Envelope`);
+      console.log(`📧 Target Recipient:     ${email}`);
+      console.log(`👤 Target User Identity:  ${user.username || 'Polystrukt Member'}`);
+      console.log(`🔗 Recovery URL Hash:    https://polystrukt.com/auth/reset?token=${resetToken}`);
+      console.log(`⏱️ Token expiration:     24 hours`);
+      console.log(`======================================================\n`);
+
       return res.json({ 
         success: true, 
         message: 'If this identity is registered in Polystrukt, a restoration link is being dispatched.' 
@@ -395,7 +470,10 @@ async function startServer() {
         await saveData(USERS_FILE, users);
       }
 
-      const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
+      const rememberMe = req.body.rememberMe === true;
+      const expiresIn = rememberMe ? '30d' : '7d';
+      console.log(`[AUTH] Authenticating Google user and generating session token with rememberMe=${rememberMe} -> expiration time envelope set to ${expiresIn}`);
+      const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn });
       res.json({ token, user: { email: user.email, name: user.name } });
     } catch (err) {
       console.error(`[Auth] Google Verify Failure:`, err);

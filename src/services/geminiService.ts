@@ -1,19 +1,30 @@
-
-import { Attachment, ChatMessage } from '../types';
+import { Attachment, ChatMessage, ProceduralSpec, HardwareSuggestion, FEAResult } from '../types';
 
 export interface TechnicalAIResponse {
+  thought_process?: string;
   analysis: string;
   specs: string;
   action: string;
   modelUrl: string;
+  proceduralSpec?: ProceduralSpec;
+  hardwareSuggestions?: HardwareSuggestion[];
+  feaResult?: FEAResult;
+  analysisReport?: {
+    visual: string;
+    functional: string;
+    structural: string;
+  };
   simulationType: 'stress' | 'thermal' | 'flow' | 'none';
   suggestedMaterials: string[];
   researchSummary: string; 
   optimizationLogic: string; 
   isolatedComponent?: string; 
   sources?: { uri: string; title: string }[];
+  verificationStatus?: 'verified' | 'unverified_limit_reached';
+  verificationAttempts?: number;
+  jobId?: string;
   error?: string;
-  statusCode: number; 
+  statusCode: number; // Guaranteed status code
 }
 
 const KHRONOS_ASSET_BASE = "https://cdn.jsdelivr.net/gh/KhronosGroup/glTF-Sample-Models@master/2.0";
@@ -24,8 +35,14 @@ const MODEL_LIBRARY = {
   HYDRAULIC_UNIT: `${KHRONOS_ASSET_BASE}/ReciprocatingSaw/glTF-Binary/ReciprocatingSaw.glb`,
   HELMET_SF: `${KHRONOS_ASSET_BASE}/DamagedHelmet/glTF-Binary/DamagedHelmet.glb`,
   PRESSURE_VESSEL: `${KHRONOS_ASSET_BASE}/WaterBottle/glTF-Binary/WaterBottle.glb`,
+  CHAIR: `${KHRONOS_ASSET_BASE}/SheenChair/glTF-Binary/SheenChair.glb`,
+  OPTICS_UNIT: `${KHRONOS_ASSET_BASE}/Lantern/glTF-Binary/Lantern.glb`,
+  STRUCTURAL_FRAME: `${KHRONOS_ASSET_BASE}/Box/glTF-Binary/Box.glb`,
 };
 
+/**
+ * Validates inputs to prevent malformed requests.
+ */
 const validateInput = (query: string, attachment?: Attachment): string | null => {
   const trimmed = query?.trim();
   if (!trimmed && !attachment) {
@@ -37,6 +54,9 @@ const validateInput = (query: string, attachment?: Attachment): string | null =>
   return null;
 };
 
+/**
+ * Standardized error generator to ensure a valid JSON response structure is always returned.
+ */
 const createJsonErrorResponse = (message: string, code: string, status: number): TechnicalAIResponse => ({
   analysis: `KERNEL_SIGNAL_INTERRUPTED: ${message}`,
   specs: `SYSTEM_CODE: ${code}`,
@@ -46,118 +66,100 @@ const createJsonErrorResponse = (message: string, code: string, status: number):
   suggestedMaterials: ["Fallback Composite"],
   researchSummary: "Analysis aborted due to environment or input constraints.",
   optimizationLogic: "Iterative solver failed to converge on the provided parameters.",
-  error: message,
+  error: message || "Unknown Kernel Error",
   statusCode: status
 });
-
-const pollForJobCompletion = async (jobId: string, onStatusUpdate: (status: string) => void): Promise<any> => {
-  let attempts = 0;
-  const maxAttempts = 120; // 2 minutes
-
-  while (attempts < maxAttempts) {
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    attempts++;
-
-    const res = await fetch(`/api/generate/status/${jobId}`);
-
-    if (!res.ok) {
-        let errorReason = `Request failed with status ${res.status}`;
-        try {
-            const errorData = await res.json();
-            errorReason = errorData?.data?.reason || errorData?.data?.error || errorReason;
-        } catch (e) {
-            // Ignore if parsing fails
-        }
-        throw new Error(errorReason);
-    }
-
-    const data = await res.json();
-
-    switch (data.status) {
-      case 'completed':
-        onStatusUpdate('completed');
-        return data.data;
-      
-      case 'failed':
-        onStatusUpdate('failed');
-        throw new Error(data.data.reason || data.data.error || 'Job failed without a specific reason.');
-
-      case 'processing':
-        onStatusUpdate(`processing: ${data.data.state}`);
-        break;
-
-      default:
-        onStatusUpdate(`unknown status: ${data.status}`);
-        break;
-    }
-  }
-
-  throw new Error("Job timed out after 2 minutes.");
-};
 
 export const getTechnicalResponse = async (
   query: string, 
   history: ChatMessage[] = [],
   attachment?: Attachment,
-  onStatusUpdate: (status: string) => void = () => {}
+  token?: string | null,
+  onStatus?: (status: { state: string; attempt?: number; errors?: string[] }) => void
 ): Promise<TechnicalAIResponse> => {
-  const validationError = validateInput(query, attachment);
-  if (validationError) {
-    return createJsonErrorResponse(validationError, "VAL_ERROR_400", 400);
-  }
-
-  if (query === "DIAGNOSTIC_RUN") {
-    return {
-      analysis: "Diagnostic synthesis successful. Kernel connectivity verified.",
-      specs: "UNIT_TEST_STUB_OK",
-      action: "PROCEED",
-      modelUrl: MODEL_LIBRARY.ENGINE_V2,
-      simulationType: 'stress',
-      suggestedMaterials: ["Test-Grade Polymer"],
-      researchSummary: "Simulation of deterministic diagnostic flow for verification.",
-      optimizationLogic: "Diagnostic pass-through completed.",
-      statusCode: 200
-    };
-  }
-
   try {
-    const prompt = `
-      Based on the following history and query, generate a technical response in JSON format.
-      History: ${JSON.stringify(history)}
-      Query: ${query}
-      Attachment: ${attachment ? attachment.name : 'None'}
-    `;
-
-    onStatusUpdate("queueing");
-    const initialResponse = await fetch('/api/generate', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ prompt }),
-    });
-
-    if (!initialResponse.ok) {
-      const errorText = await initialResponse.text();
-      return createJsonErrorResponse(`Failed to queue job: ${errorText}`, `QUEUE_ERROR_${initialResponse.status}`, initialResponse.status);
+    const errorPrefix = "ENGINE_INIT_FAILURE";
+    
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const { jobId } = await initialResponse.json();
-    onStatusUpdate("queued");
+    // Call the backend to enqueue the generation
+    const res = await fetch('/api/generate', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ prompt: query, history, attachment })
+    });
 
-    const result = await pollForJobCompletion(jobId, onStatusUpdate);
+    if (!res.ok) {
+      let errorMessage = `Failed to start generation (${res.status})`;
+      if (res.status === 401) errorMessage = 'Authentication required. Please sign in.';
+      
+      try {
+        const bodyText = await res.text();
+        if (bodyText && bodyText.trim().startsWith('{')) {
+          const errorData = JSON.parse(bodyText);
+          errorMessage = errorData.error || errorMessage;
+        } else if (bodyText && bodyText.length < 500) {
+          errorMessage = bodyText;
+        }
+      } catch (e) {}
+      
+      throw new Error(errorMessage);
+    }
+
+    const resJson = await res.json();
+    const jobId = resJson.jobId;
+
+    if (!jobId) {
+      throw new Error("Job system synchronization failed: No Job ID returned.");
+    }
+
+    // Poll for the job status
+    let attempts = 0;
+    const maxAttempts = 180; 
+    let delay = 500; 
     
-    const modelKey = (result.modelUrl as string || "GEARBOX").toUpperCase().replace(/\s/g, '_') as keyof typeof MODEL_LIBRARY;
-    const resolvedUrl = MODEL_LIBRARY[modelKey] || MODEL_LIBRARY.GEARBOX;
+    while (attempts < maxAttempts) {
+      const statusRes = await fetch(`/api/generate/status/${jobId}`, {
+        headers
+      });
 
-    return {
-      ...result,
-      modelUrl: resolvedUrl,
-      statusCode: 200
-    };
+      if (!statusRes.ok) {
+        let errorMsg = `Poll failed [${statusRes.status}]`;
+        try {
+          const errData = await statusRes.json();
+          errorMsg = errData.error || errorMsg;
+        } catch (e) {}
+        throw new Error(errorMsg);
+      }
 
+      const statusData = await statusRes.json();
+      
+      if (onStatus) {
+        onStatus({ 
+          state: statusData.state, 
+          attempt: statusData.attempt, 
+          errors: statusData.errors 
+        });
+      }
+
+      if (statusData.state === 'completed') {
+        return { ...statusData.result, jobId };
+      } else if (statusData.state === 'failed') {
+        throw new Error(statusData.error || 'Generation failed');
+      }
+
+      // Wait before next poll with slight backoff 
+      await new Promise(resolve => setTimeout(resolve, delay));
+      if (delay < 2000) delay += 300; 
+      attempts++;
+    }
+
+    throw new Error('Generation timed out after several minutes of synthesis.');
   } catch (error: any) {
-    console.error("Service Fault:", error);
-    return createJsonErrorResponse(error.message || "An unexpected error occurred.", "FAULT_500", 500);
+    console.error("Backend Service Fault:", error);
+    return createJsonErrorResponse(error.message || "An unexpected error occurred in the backend.", "BACKEND_FAULT_500", 500);
   }
 };

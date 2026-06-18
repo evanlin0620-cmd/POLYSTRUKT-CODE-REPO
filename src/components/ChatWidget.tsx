@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   Cpu, X, Send, Bot, Sparkles, Terminal, ArrowRight, AlertCircle, 
   RefreshCcw, Save, FolderOpen, Paperclip, Trash2, FileText, 
@@ -11,9 +11,11 @@ import {
   Box as BoxIcon
 } from 'lucide-react';
 import { getTechnicalResponse, TechnicalAIResponse } from '../services/geminiService';
-import { ChatMessage, SavedSession, Attachment } from '../types';
+import { ChatMessage, SavedSession, Attachment, SimulationType } from '../types';
 import { SimulationPreview } from './SimulationPreview';
 import { InspectableModel } from './InspectableModel';
+import { AnalysisReportView } from './AnalysisReportView';
+import { useAuth } from '../hooks/useAuth';
 
 const STORAGE_KEY = 'polystrukt_saved_sessions';
 
@@ -81,7 +83,7 @@ const HeatmapView = ({ type, baseValue, unit }: { type: 'stress' | 'thermal' | '
    );
 };
 
-const SimulationMetricsChart = ({ type, text }: { type: 'stress' | 'thermal' | 'flow' | 'none' | undefined, text: string }) => {
+const SimulationMetricsChart = ({ type, text }: { type: SimulationType | undefined, text: string }) => {
   const metrics = useMemo(() => extractMetrics(text), [text]);
   if (!metrics || metrics.length === 0) return null;
   const primaryMetric = metrics[0] || { value: '100', unit: type === 'stress' ? 'MPa' : '°C' };
@@ -113,13 +115,13 @@ const FormattedMessage = ({ text }: { text: string }) => {
         const trimmed = line.trim();
         if (!trimmed) return <div key={i} className="h-2" />;
         const parts = trimmed.split(/(\*\*.*?\*\*)/g);
-        return <p key={i} className="text-zinc-600 leading-relaxed text-sm">{parts.map((p, idx) => p.startsWith('**') ? <strong key={idx} className="text-zinc-900">{p.slice(2,-2)}</strong> : p)}</p>;
+        return <p key={i} className="text-zinc-400 leading-relaxed text-sm">{parts.map((p, idx) => p.startsWith('**') ? <strong key={idx} className="text-white">{p.slice(2,-2)}</strong> : p)}</p>;
       })}
       <div className="mt-4 grid grid-cols-2 gap-2">
         {metrics.slice(0, 4).map((m, i) => (
-          <div key={i} className="bg-zinc-50 border border-zinc-200 m-2 rounded-lg flex flex-col items-center">
-            <span className="text-lg font-bold font-mono">{m.value}</span>
-            <span className="text-[10px] text-zinc-400 uppercase">{m.unit}</span>
+          <div key={i} className="bg-white/5 border border-white/5 m-2 rounded-lg flex flex-col items-center">
+            <span className="text-lg font-bold font-mono text-white">{m.value}</span>
+            <span className="text-[10px] text-zinc-500 uppercase">{m.unit}</span>
           </div>
         ))}
       </div>
@@ -127,7 +129,7 @@ const FormattedMessage = ({ text }: { text: string }) => {
   );
 };
 
-const ModelContainer = ({ simulationType, modelUrl, autoLoad = false, focusPart }: { simulationType?: 'stress' | 'thermal' | 'flow' | 'none', modelUrl?: string, autoLoad?: boolean, focusPart?: string }) => {
+const ModelContainer = ({ simulationType, modelUrl, autoLoad = false, focusPart }: { simulationType?: SimulationType, modelUrl?: string, autoLoad?: boolean, focusPart?: string }) => {
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [isLoaded, setIsLoaded] = useState(autoLoad);
     const [isInView, setIsInView] = useState(true);
@@ -246,18 +248,20 @@ const ModelContainer = ({ simulationType, modelUrl, autoLoad = false, focusPart 
 };
 
 const MessageBubble: React.FC<{ msg: ChatMessage, index: number, onRetry: () => void, isLast: boolean }> = ({ msg, index, onRetry, isLast }) => {
+  const [showThought, setShowThought] = useState(false);
+  
   return (
     <motion.div 
       data-testid={`chat-message-${msg.role}`}
       initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} 
       className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
     >
-      <div className={`max-w-[85%] p-4 rounded-2xl shadow-sm ${msg.role === 'user' ? 'bg-zinc-900 text-white rounded-tr-sm' : 'bg-white border border-zinc-100 text-zinc-800 rounded-tl-sm'}`}>
-        {msg.role === 'model' && <div className="mb-2 text-[10px] text-purple-600 font-mono uppercase border-b border-zinc-50 pb-2 flex items-center gap-1"><Bot size={10} /> Technical Synthesis</div>}
+      <div className={`max-w-[85%] p-4 rounded-2xl shadow-sm ${msg.role === 'user' ? 'bg-indigo-600 text-white rounded-tr-sm' : 'bg-zinc-900 border border-white/10 text-white rounded-tl-sm'}`}>
+        {msg.role === 'model' && <div className="mb-2 text-[10px] text-indigo-400 font-mono uppercase border-b border-white/5 pb-2 flex items-center gap-1"><Bot size={10} /> Technical Synthesis</div>}
         
         {msg.attachment && (
-            <div data-testid="chat-attachment-preview" className="mb-3 p-2 bg-zinc-100/50 rounded-lg flex items-center gap-3 border border-zinc-200/50">
-                <div className="bg-white p-2 rounded-md shadow-sm text-zinc-500">
+            <div data-testid="chat-attachment-preview" className="mb-3 p-2 bg-white/5 rounded-lg flex items-center gap-3 border border-white/5">
+                <div className="bg-zinc-950 p-2 rounded-md shadow-sm text-zinc-500">
                     {msg.attachment.mimeType.includes('image') ? <ImageIcon size={14} /> : <FileText size={14} />}
                 </div>
                 <div className="flex flex-col">
@@ -267,8 +271,40 @@ const MessageBubble: React.FC<{ msg: ChatMessage, index: number, onRetry: () => 
             </div>
         )}
 
+        {msg.role === 'model' && msg.thoughtProcess && (
+          <div className="mb-4 bg-zinc-950/50 border border-white/5 rounded-xl overflow-hidden">
+            <button 
+              onClick={() => setShowThought(!showThought)}
+              className="w-full flex items-center justify-between px-3 py-2 text-[9px] font-black uppercase tracking-widest text-zinc-500 hover:text-indigo-400 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <Terminal size={10} />
+                <span>Synthesis Reasoning</span>
+              </div>
+              <ChevronDown size={10} className={`transition-transform duration-300 ${showThought ? 'rotate-180' : ''}`} />
+            </button>
+            <AnimatePresence>
+              {showThought && (
+                <motion.div 
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                >
+                  <div className="px-3 pb-3 text-[11px] font-mono text-zinc-400 leading-relaxed italic border-t border-white/5 pt-2">
+                    {msg.thoughtProcess}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
+
         {msg.role === 'model' ? <FormattedMessage text={msg.text} /> : <div className="whitespace-pre-wrap">{msg.text}</div>}
         
+        {msg.role === 'model' && msg.analysisReport && (
+          <AnalysisReportView report={msg.analysisReport} />
+        )}
+
         {msg.role === 'model' && (msg as any).sources?.length > 0 && (
           <div className="mt-4 pt-3 border-t border-zinc-50 flex flex-wrap gap-2">
             {(msg as any).sources.map((s: any, idx: number) => (
@@ -305,9 +341,9 @@ const SuggestionButton: React.FC<{ text: string, onClick: (s: string) => void | 
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: 0.5 + index * 0.1 }}
       whileHover={{ x: 5 }}
-      className={`w-full group flex items-center gap-4 p-4 rounded-2xl border transition-all duration-300 text-left ${theme.bg} ${theme.border} ${theme.hover} shadow-sm backdrop-blur-sm`}
+      className={`w-full group flex items-center gap-4 p-4 rounded-2xl border transition-all duration-300 text-left bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20 shadow-sm backdrop-blur-sm`}
     >
-      <div className={`p-2 rounded-xl bg-white shadow-sm transition-transform duration-300 group-hover:scale-110 ${theme.text}`}>
+      <div className={`p-2 rounded-xl bg-zinc-950 shadow-sm transition-transform duration-300 group-hover:scale-110 ${theme.text}`}>
         {theme.icon}
       </div>
       <div className="flex-1">
@@ -371,7 +407,6 @@ export const ChatWidget: React.FC = () => {
     const updated = [newSession, ...savedSessions];
     setSavedSessions(updated);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-    alert("Session saved successfully.");
   };
 
   const loadSession = (session: SavedSession) => {
@@ -455,7 +490,8 @@ export const ChatWidget: React.FC = () => {
     setMessages(prev => [...prev, userMsg]);
     setInput(''); setAttachment(null); setIsTyping(true);
     try {
-      const technicalRes = await getTechnicalResponse(userMsg.text, messages, attachment || undefined);
+      const token = useAuth.getState().token;
+      const technicalRes = await getTechnicalResponse(userMsg.text, messages, attachment || undefined, token);
       
       if (technicalRes.error) {
         setMessages(prev => [...prev, {
@@ -467,11 +503,13 @@ export const ChatWidget: React.FC = () => {
         const botMsg: ChatMessage = { 
             role: 'model', 
             text: `${technicalRes.analysis}\n\n**Optimization Logic:**\n${technicalRes.optimizationLogic}\n\n**Specs:**\n${technicalRes.specs}`, 
+            thoughtProcess: technicalRes.thought_process,
             timestamp: new Date(), 
             simulationType: technicalRes.simulationType as any, 
             has3DModel: true, 
             modelUrl: technicalRes.modelUrl,
             focusPart: technicalRes.isolatedComponent,
+            analysisReport: technicalRes.analysisReport,
             // @ts-ignore
             sources: technicalRes.sources
         };
@@ -492,7 +530,7 @@ export const ChatWidget: React.FC = () => {
       <div className={`fixed bottom-8 right-8 z-40 ${isOpen ? 'hidden' : 'block'}`}>
         <motion.div
           data-testid="chat-trigger"
-          className="relative group"
+          className="relative group pointer-events-auto"
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           whileHover={{ scale: 1.05 }}
@@ -536,7 +574,10 @@ export const ChatWidget: React.FC = () => {
         {isOpen && (
           <motion.div 
             data-testid="chat-window"
-            initial={{ opacity: 0, y: 50, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 50, scale: 0.9 }} className="fixed bottom-8 right-8 z-50 w-[420px] h-[600px] bg-white/95 backdrop-blur-3xl border border-zinc-200 rounded-[2rem] shadow-2xl flex flex-col overflow-hidden"
+            initial={{ opacity: 0, y: 50, scale: 0.9 }} 
+            animate={{ opacity: 1, y: 0, scale: 1 }} 
+            exit={{ opacity: 0, y: 50, scale: 0.9 }} 
+            className="fixed bottom-0 right-0 sm:bottom-8 sm:right-8 z-50 w-full sm:w-[420px] h-full sm:h-[600px] bg-zinc-950/95 backdrop-blur-3xl border-t sm:border border-white/10 rounded-t-[2rem] sm:rounded-[2rem] shadow-2xl flex flex-col overflow-hidden"
           >
             
             <AnimatePresence>
@@ -641,21 +682,21 @@ export const ChatWidget: React.FC = () => {
               )}
             </AnimatePresence>
 
-            <div className="p-5 border-b flex justify-between items-center bg-zinc-50/50">
+            <div className="p-5 border-b border-white/10 flex justify-between items-center bg-zinc-900/50">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-zinc-900 rounded-xl flex items-center justify-center text-white shadow-lg">
+                <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg">
                   <Bot size={20} />
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm tracking-tight">GenCAD Engine</h3>
-                  <span className="text-[10px] font-mono opacity-60 uppercase tracking-widest">Active State</span>
+                  <h3 className="font-bold text-sm tracking-tight text-white">GenCAD Engine</h3>
+                  <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">Active State</span>
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 <button 
                   data-testid="chat-view-import"
                   onClick={() => setView('import')} 
-                  className={`p-2 rounded-xl transition-all ${view === 'import' ? 'bg-purple-100 text-purple-600' : 'hover:bg-zinc-200 text-zinc-500'}`}
+                  className={`p-2 rounded-xl transition-all ${view === 'import' ? 'bg-indigo-500/20 text-indigo-400' : 'hover:bg-white/10 text-zinc-500'}`}
                   title="Dedicated File Export"
                 >
                   <Upload size={18} />
@@ -663,7 +704,7 @@ export const ChatWidget: React.FC = () => {
                 <button 
                   data-testid="chat-view-history"
                   onClick={() => setView(view === 'history' ? 'chat' : 'history')} 
-                  className={`p-2 rounded-xl transition-all ${view === 'history' ? 'bg-purple-100 text-purple-600' : 'hover:bg-zinc-200 text-zinc-500'}`}
+                  className={`p-2 rounded-xl transition-all ${view === 'history' ? 'bg-indigo-500/20 text-indigo-400' : 'hover:bg-white/10 text-zinc-500'}`}
                   title="Design History"
                 >
                   <History size={18} />
@@ -672,7 +713,7 @@ export const ChatWidget: React.FC = () => {
                   <button 
                     data-testid="chat-save-session"
                     onClick={saveCurrentSession}
-                    className="p-2 hover:bg-zinc-200 rounded-xl transition-all text-zinc-500"
+                    className="p-2 hover:bg-white/10 rounded-xl transition-all text-zinc-500"
                     title="Save Design State"
                   >
                     <Save size={18} />
@@ -681,7 +722,7 @@ export const ChatWidget: React.FC = () => {
                 <button 
                   data-testid="chat-close"
                   onClick={() => setIsOpen(false)} 
-                  className="p-2 hover:bg-zinc-200 rounded-xl transition-all text-zinc-500"
+                  className="p-2 hover:bg-white/10 rounded-xl transition-all text-zinc-500"
                 >
                   <X size={20} />
                 </button>
@@ -834,7 +875,7 @@ export const ChatWidget: React.FC = () => {
             </div>
 
             {view === 'chat' && (
-              <div className="px-5 py-4 border-t bg-white/80 backdrop-blur-md space-y-4">
+              <div className="px-5 py-4 border-t border-white/10 bg-zinc-900/80 backdrop-blur-md space-y-4">
                 <AnimatePresence>
                   {attachment && (
                     <motion.div 
@@ -842,16 +883,16 @@ export const ChatWidget: React.FC = () => {
                       initial={{ opacity: 0, y: 10 }} 
                       animate={{ opacity: 1, y: 0 }} 
                       exit={{ opacity: 0, scale: 0.9 }}
-                      className="flex items-center gap-3 p-3 bg-zinc-900 text-white rounded-2xl border border-zinc-800 shadow-xl group"
+                      className="flex items-center gap-3 p-3 bg-indigo-600 text-white rounded-2xl border border-indigo-400/20 shadow-xl group"
                     >
-                      <div className="bg-white/10 p-2.5 rounded-xl text-purple-400 shadow-sm">
+                      <div className="bg-white/10 p-2.5 rounded-xl text-white shadow-sm">
                         {attachment.mimeType.includes('image') ? <ImageIcon size={16} /> : <FileText size={16} />}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-[10px] font-bold truncate tracking-tight">{attachment.name}</p>
-                        <p className="text-[8px] text-zinc-400 font-mono uppercase tracking-tighter">Constraint Ref Active</p>
+                        <p className="text-[8px] text-indigo-200 font-mono uppercase tracking-tighter">Constraint Ref Active</p>
                       </div>
-                      <button data-testid="remove-attachment-btn" onClick={() => setAttachment(null)} className="p-2 hover:bg-red-500/20 hover:text-red-400 rounded-xl transition-colors">
+                      <button data-testid="remove-attachment-btn" onClick={() => setAttachment(null)} className="p-2 hover:bg-white/10 rounded-xl transition-colors">
                         <Trash2 size={16} />
                       </button>
                     </motion.div>
@@ -860,13 +901,13 @@ export const ChatWidget: React.FC = () => {
 
                 <motion.div 
                   className="flex items-center gap-2"
-                  animate={isShaking ? { x: [-8, 8, -6, 6, -3, 3, 0], borderColor: ['rgba(0,0,0,0.1)', 'rgba(239,68,68,0.5)', 'rgba(0,0,0,0.1)'] } : {}}
+                  animate={isShaking ? { x: [-8, 8, -6, 6, -3, 3, 0], borderColor: ['rgba(255,255,255,0.1)', 'rgba(239,68,68,0.5)', 'rgba(255,255,255,0.1)'] } : {}}
                   transition={{ duration: 0.4 }}
                 >
                   <button 
                     data-testid="chat-attach-btn"
                     onClick={() => setView('import')}
-                    className={`p-3.5 rounded-2xl transition-all border flex items-center justify-center shadow-sm ${attachment ? 'bg-purple-600 border-purple-700 text-white' : 'bg-zinc-100 border-zinc-200 text-zinc-500 hover:bg-zinc-200 hover:text-purple-600'}`}
+                    className={`p-3.5 rounded-2xl transition-all border flex items-center justify-center shadow-sm ${attachment ? 'bg-indigo-600 border-indigo-700 text-white' : 'bg-white/5 border-white/10 text-zinc-500 hover:bg-white/10 hover:text-indigo-400'}`}
                     title="Quick Import"
                   >
                     <Upload size={18} />
@@ -880,13 +921,13 @@ export const ChatWidget: React.FC = () => {
                       onChange={(e) => setInput(e.target.value)} 
                       onKeyDown={(e) => e.key === 'Enter' && processMessage(input)} 
                       placeholder="Input design params..." 
-                      className={`w-full bg-zinc-50 p-3.5 rounded-2xl border transition-all focus:outline-none text-sm font-mono ${isShaking ? 'border-red-400 ring-1 ring-red-400/20' : 'border-zinc-100 focus:border-purple-400 focus:ring-1 focus:ring-purple-400/20'}`} 
+                      className={`w-full bg-white/5 p-3.5 rounded-2xl border transition-all focus:outline-none text-sm font-mono text-white ${isShaking ? 'border-red-400 ring-1 ring-red-400/20' : 'border-white/10 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20'}`} 
                     />
                   </div>
                   <button 
                     data-testid="chat-send-btn"
                     onClick={() => processMessage(input)} 
-                    className={`bg-zinc-900 text-white p-3.5 rounded-2xl hover:bg-zinc-800 transition-all active:scale-95 shadow-xl shadow-zinc-900/10 flex items-center justify-center ${(!input.trim() && !attachment) ? 'opacity-80' : ''}`}
+                    className={`bg-indigo-600 text-white p-3.5 rounded-2xl hover:bg-indigo-700 transition-all active:scale-95 shadow-xl shadow-indigo-600/20 flex items-center justify-center ${(!input.trim() && !attachment) ? 'opacity-80' : ''}`}
                   >
                     <Send size={18} />
                   </button>
@@ -895,11 +936,11 @@ export const ChatWidget: React.FC = () => {
             )}
             
             {view !== 'chat' && (
-                <div className="p-4 border-t bg-zinc-50 text-center">
+                <div className="p-4 border-t border-white/10 bg-zinc-900 text-center">
                     <button 
                         data-testid="return-to-chat-footer-btn"
                         onClick={() => setView('chat')}
-                        className="text-[10px] font-black uppercase tracking-widest font-unique text-zinc-400 hover:text-zinc-900 transition-colors"
+                        className="text-[10px] font-black uppercase tracking-widest font-unique text-zinc-500 hover:text-white transition-colors"
                     >
                         Return to Design Console
                     </button>

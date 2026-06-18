@@ -1,18 +1,21 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { ThreeScene } from './ThreeScene';
-import { SavedPrompts } from './SavedPrompts';
-import { RecentPrompts } from './RecentPrompts';
-import { useRecentPrompts } from '../hooks/useRecentPrompts';
+import { useAuth } from '../hooks/useAuth';
 
 interface HeroProps {
-  onSelectPrompt: (prompt: string) => void;
+  onSelectPrompt?: (prompt: string) => void;
 }
 
 export const Hero: React.FC<HeroProps> = ({ onSelectPrompt }) => {
-  const { recentPrompts } = useRecentPrompts();
+  const { login } = useAuth();
 
   const handleOpenWorkspace = () => {
+    if (onSelectPrompt) {
+      onSelectPrompt('');
+    }
+    // Set a dummy token to enter the workspace
+    login('demo@polystrukt.com', 'password123');
     window.dispatchEvent(new CustomEvent('navigate', { detail: { view: 'workspace' } }));
   };
 
@@ -33,23 +36,23 @@ export const Hero: React.FC<HeroProps> = ({ onSelectPrompt }) => {
              <span className="text-xs font-mono tracking-widest text-zinc-600 uppercase font-medium">GenCAD V.1.0 Online</span>
           </div>
           
-          <h1 className="text-7xl md:text-9xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-br from-zinc-900 via-zinc-500 to-zinc-900 pb-2 leading-[0.9] drop-shadow-sm select-none">
-            Thoughts <br /> To Form.
+          <h1 className="text-8xl md:text-11xl font-black tracking-tightest text-foreground font-unique leading-[0.8] drop-shadow-sm select-none uppercase">
+            Thoughts <br /> <span className="text-zinc-400">To Form.</span>
           </h1>
           
-          <p className="mt-8 text-lg md:text-xl font-medium tracking-wide max-w-lg mx-auto text-transparent bg-clip-text bg-gradient-to-br from-zinc-800 via-zinc-500 to-zinc-800">
-            Describe your mechanics. We build the design.
+          <p className="mt-8 text-xl md:text-2xl font-light tracking-widest max-w-xl mx-auto text-muted-foreground font-technical uppercase opacity-70">
+            Describe your engineering requirements. <br /> Our kernel synthesizes the geometry.
           </p>
         </motion.div>
         
-        <motion.div
+        <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.4 }}
           className="pointer-events-auto pt-6"
         >
           <div className="flex flex-col md:flex-row items-center justify-center gap-4">
-            <button
+            <button 
               onClick={handleOpenWorkspace}
               className="px-8 py-3.5 bg-zinc-900 text-white rounded-full font-medium transition-transform hover:scale-105 shadow-xl shadow-zinc-900/20 focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:ring-offset-2"
             >
@@ -60,14 +63,10 @@ export const Hero: React.FC<HeroProps> = ({ onSelectPrompt }) => {
             </button>
           </div>
         </motion.div>
-
-        <RecentPrompts recentPrompts={recentPrompts} onSelectPrompt={onSelectPrompt} />
       </div>
-
-      <SavedPrompts onSelectPrompt={onSelectPrompt} />
       
       {/* Scroll indicator */}
-      <motion.div
+      <motion.div 
         className="absolute bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 opacity-60 mix-blend-darken"
         animate={{ y: [0, 10, 0] }}
         transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}

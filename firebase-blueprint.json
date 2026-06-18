@@ -1,0 +1,40 @@
+{
+  "entities": {
+    "Project": {
+      "title": "Project",
+      "description": "User CAD projects storing procedural spec design details and thumbnails.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "The unique identifier of the user who owns this project." },
+        "name": { "type": "string", "description": "A customized human-readable title of the engineering CAD model." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "The timestamp of creation, verified by the server clock." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "The timestamp of the last revision node modification." },
+        "design": { "type": "object", "description": "The complete serialized proceduralSpec structure and multi-physics metadata." }
+      },
+      "required": ["userId", "name", "design"]
+    },
+    "ChatSession": {
+      "title": "ChatSession",
+      "description": "A session record encapsulating conversational steps and engineering dialogue logs.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "The owner UID." },
+        "name": { "type": "string", "description": "Representative summary tag of the chat stream." },
+        "messages": { "type": "array", "description": "Ordered history logs conforming to ChatMessage schema types." },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "name", "messages"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/projects/{projectId}": {
+      "schema": "Project",
+      "description": "User specific durable CAD designs storage bucket."
+    },
+    "/users/{userId}/sessions/{sessionId}": {
+      "schema": "ChatSession",
+      "description": "Secured index listing and conversation threads per user node."
+    }
+  }
+}

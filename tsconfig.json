@@ -11,9 +11,7 @@
     ],
     "skipLibCheck": true,
     "types": [
-      "node",
-      "vitest/globals",
-      "@testing-library/jest-dom"
+      "node"
     ],
     "moduleResolution": "bundler",
     "isolatedModules": true,

@@ -1,0 +1,16 @@
+{
+  "7gg6u": {
+    "userId": "demo-user-id",
+    "state": "failed",
+    "createdAt": "2026-05-07T22:43:46.333Z",
+    "error": "Technical Synthesis interface API key missing",
+    "updatedAt": "2026-05-07T22:43:46.339Z"
+  },
+  "fbxomp": {
+    "userId": "demo-user-id",
+    "state": "failed",
+    "createdAt": "2026-05-07T22:43:49.356Z",
+    "error": "Technical Synthesis interface API key missing",
+    "updatedAt": "2026-05-07T22:43:49.359Z"
+  }
+}

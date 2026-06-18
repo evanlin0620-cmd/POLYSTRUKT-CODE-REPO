@@ -1,8 +1,11 @@
 {
   "name": "Polystrukt GenCAD",
-  "description": "AI-powered engineering platform converting natural language into rigid CAD models and technical design.",
+  "description": "AI-powered engineering platform for high-performance generative CAD and technical synthesis across all devices.",
   "requestFramePermissions": [
     "camera",
     "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
   ]
 }

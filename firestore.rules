@@ -1,0 +1,45 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper: is caller authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper: does caller secure request own user directory path
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Default: block all collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // User workspaces and projects match
+    match /users/{userId}/projects/{projectId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) 
+        && request.resource.data.userId == userId
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0;
+      allow update: if isOwner(userId) 
+        && request.resource.data.userId == userId
+        && request.resource.data.name is string;
+      allow delete: if isOwner(userId);
+    }
+
+    // User chat history and sessions match
+    match /users/{userId}/sessions/{sessionId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) 
+        && request.resource.data.userId == userId
+        && request.resource.data.messages is list;
+      allow update: if isOwner(userId) 
+        && request.resource.data.userId == userId
+        && request.resource.data.messages is list;
+      allow delete: if isOwner(userId);
+    }
+  }
+}

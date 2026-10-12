@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Polystrukt GenCAD | Generative Engineering Studio</title>
+    <meta name="description" content="AI-powered engineering platform for high-performance generative CAD and technical synthesis across all devices." />
+    <meta property="og:title" content="Polystrukt GenCAD" />
+    <meta property="og:description" content="AI-powered engineering platform for high-performance generative CAD and technical synthesis across all devices." />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&family=Syne:wght@700;800&family=Unbounded:wght@400;700;900&family=Michroma&family=Outfit:wght@300;400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600&family=Chakra+Petch:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/src/index.css">
+    <script>
+      // Graceful recovery for stale Vite dependency optimizer chunks and WebSocket disconnects
+      window.addEventListener('error', function(event) {
+        var msg = (event && event.message) ? String(event.message) : '';
+        if (msg.includes('optimize deps') || msg.includes('Failed to fetch dynamically imported module') || (msg.includes('does not exist at') && msg.includes('.vite/deps'))) {
+          if (!sessionStorage.getItem('vite_stale_chunk_reloaded')) {
+            sessionStorage.setItem('vite_stale_chunk_reloaded', '1');
+            window.location.reload();
+          }
+        }
+        if (
+          msg.includes('WebSocket') ||
+          msg.includes('websocket') ||
+          msg.includes('failed to connect to websocket') ||
+          msg.includes('[vite]')
+        ) {
+          event.preventDefault();
+          if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+          return true;
+        }
+      }, true);
+
+      window.addEventListener('unhandledrejection', function(event) {
+        var reason = event && event.reason ? (event.reason.message || String(event.reason)) : '';
+        if (
+          reason.includes('WebSocket closed without opened') || 
+          reason.includes('[vite] failed to connect to websocket') ||
+          reason.includes('WebSocket') ||
+          reason.includes('websocket')
+        ) {
+          event.preventDefault();
+          if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+        }
+      }, true);
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+</html>

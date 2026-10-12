@@ -1,0 +1,50 @@
+[
+  {
+    "id": "demo-user-id",
+    "email": "demo@polystrukt.com",
+    "username": "Demo_Engineer",
+    "role": "Lead Architect",
+    "password": "$2b$10$lmwB24yMkppCrSSEXAP/yuyQ3iver0JsWpDVY1HgEcty0i7hWObmK",
+    "isDemo": true
+  },
+  {
+    "id": "1791040672108",
+    "email": "testuser123@example.com",
+    "username": "testuser123",
+    "password": "$2b$10$Y.pWDU49Vi3W8x28yTULg.7ejt0Mh67YQ9hri29fB44l0NL8.2PxC",
+    "role": "CAD & 3D Modeling",
+    "skills": [],
+    "certifications": [],
+    "createdAt": "2026-10-03T15:17:52.109Z"
+  },
+  {
+    "id": "1791040725216",
+    "email": "freshuser999@example.com",
+    "username": "freshuser999",
+    "password": "$2b$10$dhE8cOqEe8H4nz8FwSvfCOXd9j7iI2JjHstvoPgXh7mJhK4D3VQVa",
+    "role": "CAD & 3D Modeling",
+    "skills": [],
+    "certifications": [],
+    "createdAt": "2026-10-03T15:18:45.216Z"
+  },
+  {
+    "id": "1791324369139",
+    "email": "validcurl99@example.com",
+    "username": "validcurl99",
+    "password": "$2b$10$h5dCrJ.nKqHIPkl3YRpgh.7oFdCLwYmPp3Fm563ZsNtLmE/4K7ZRe",
+    "role": "CAD & 3D Modeling",
+    "skills": [],
+    "certifications": [],
+    "createdAt": "2026-10-06T22:06:09.139Z"
+  },
+  {
+    "id": "1791602422115",
+    "email": "autotest1@example.com",
+    "username": "autotest1",
+    "password": "$2b$10$pIiTi0IlB3XVH9NyBDV8xutHyh.8QrHQFLWMplo3mhBDaOVvYAOg6",
+    "role": "CAD & 3D Modeling",
+    "skills": [],
+    "certifications": [],
+    "createdAt": "2026-10-10T03:20:22.115Z"
+  }
+]
